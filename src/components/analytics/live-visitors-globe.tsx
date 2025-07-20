@@ -26,10 +26,12 @@ interface VisitorLocation {
     city: string;
     lastSeen: number;
   }>;
+  color?: string;
+  activityLevel?: string;
 }
 
 export function LiveVisitorsGlobe() {
-  const globeRef = useRef<any>();
+  const globeRef = useRef<any>(null);
   const [globeReady, setGlobeReady] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState<VisitorLocation | null>(null);
 

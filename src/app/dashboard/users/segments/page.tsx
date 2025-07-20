@@ -307,7 +307,7 @@ export default function CustomerSegmentsPage() {
                     </div>
                   </div>
                   <p className="text-xs text-gray-600 dark:text-gray-400 mb-3">
-                    Customers with lifetime value > $5,000
+                    Customers with lifetime value &gt; $5,000
                   </p>
                   <Button size="sm" variant="outline" className="w-full border-gray-200 dark:border-gray-600">
                     Create Segment
