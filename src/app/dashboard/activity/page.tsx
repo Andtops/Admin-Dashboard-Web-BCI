@@ -149,8 +149,11 @@ export default function ActivityLogsPage() {
   const stats = activityStats || {
     total: 0,
     today: 0,
-    adminActions: 0,
-    systemActions: 0
+    thisWeek: 0,
+    byPerformer: {
+      admin: 0,
+      system: 0
+    }
   };
 
   return (
@@ -203,7 +206,7 @@ export default function ActivityLogsPage() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-green-600">
-                  {stats.adminActions}
+                  {stats.byPerformer?.admin || 0}
                 </div>
               </CardContent>
             </Card>
@@ -213,7 +216,7 @@ export default function ActivityLogsPage() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-purple-600">
-                  {stats.systemActions}
+                  {stats.byPerformer?.system || 0}
                 </div>
               </CardContent>
             </Card>

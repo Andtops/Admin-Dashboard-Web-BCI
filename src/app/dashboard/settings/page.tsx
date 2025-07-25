@@ -55,7 +55,7 @@ export default function SettingsPage() {
   const { admin } = useAuth();
 
   // Queries
-  const settingsData = useQuery(api.settings?.getSettings);
+  const settingsData = useQuery(api.settings?.getSettings, {});
 
   // Mutations
   const updateSetting = useMutation(api.settings?.updateSetting);

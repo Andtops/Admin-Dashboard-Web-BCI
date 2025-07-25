@@ -68,7 +68,21 @@ export const POST = withApiKeyAuth(
 
       // Update additional requirements and urgency if provided
       if (notes || urgency) {
-        const updatedLineItems = draftQuotation.lineItems || [];
+        const updatedLineItems = (draftQuotation.lineItems || []).map(item => ({
+          itemId: item.itemId,
+          productId: item.productId,
+          productName: item.productName,
+          description: item.description,
+          specifications: item.specifications,
+          quantity: Number(item.quantity),
+          unit: item.unit,
+          unitPrice: Number(item.unitPrice || 0),
+          taxRate: Number(item.taxRate || 18),
+          lineTotal: Number(item.lineTotal || 0),
+          discount: item.discount,
+          notes: item.notes,
+          productImage: item.productImage
+        }));
         await convex.mutation(api.quotations.updateProfessionalQuotation, {
           quotationId: draftQuotation._id,
           lineItems: updatedLineItems,

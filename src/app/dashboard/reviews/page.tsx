@@ -1009,7 +1009,9 @@ export default function ReviewsPage() {
                 <Button
                   onClick={() => {
                     setShowViewDialog(false);
-                    handleAddResponse(selectedReview);
+                    if (selectedReview) {
+                      handleAddResponse(selectedReview);
+                    }
                   }}
                 >
                   <Reply className="h-4 w-4 mr-2" />

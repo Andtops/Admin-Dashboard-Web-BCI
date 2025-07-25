@@ -64,19 +64,56 @@ export const PATCH = withApiKeyAuth(
       }
 
       // Update the item
-      const updatedItems = [...existingItems];
-      updatedItems[itemIndex] = {
-        ...updatedItems[itemIndex],
-        ...updates,
-        // Ensure certain fields are properly typed
-        quantity: updates.quantity ? Number(updates.quantity) : updatedItems[itemIndex].quantity,
-        unitPrice: updates.unitPrice ? Number(updates.unitPrice) : updatedItems[itemIndex].unitPrice,
+      const currentItem = existingItems[itemIndex];
+      
+      // Ensure numeric values
+      const newUnitPrice = Number(updates.unitPrice ?? currentItem.unitPrice ?? 0);
+      const newQuantity = Number(updates.quantity ?? currentItem.quantity ?? 0);
+      const taxRate = Number(currentItem.taxRate ?? 18); // Default GST rate if not set
+      
+      // Create a properly typed line item
+      const updatedItem = {
+        itemId: currentItem.itemId,
+        productId: currentItem.productId,
+        productName: currentItem.productName,
+        description: updates.description ?? currentItem.description,
+        specifications: updates.specifications ?? currentItem.specifications,
+        quantity: newQuantity,
+        unit: currentItem.unit,
+        unitPrice: newUnitPrice,
+        discount: updates.discount ?? currentItem.discount,
+        taxRate,
+        lineTotal: newUnitPrice * newQuantity,
+        notes: updates.notes ?? currentItem.notes,
+        productImage: updates.productImage ?? currentItem.productImage
       };
-
+      
+      // Ensure all items in the array are properly typed
+      const typedItems = existingItems.map((item, idx) => {
+        if (idx === itemIndex) {
+          return updatedItem;
+        }
+        return {
+          itemId: item.itemId,
+          productId: item.productId,
+          productName: item.productName,
+          description: item.description,
+          specifications: item.specifications,
+          quantity: Number(item.quantity ?? 0),
+          unit: item.unit,
+          unitPrice: Number(item.unitPrice ?? 0),
+          discount: item.discount,
+          taxRate: Number(item.taxRate ?? 18),
+          lineTotal: Number(item.unitPrice ?? 0) * Number(item.quantity ?? 0),
+          notes: item.notes,
+          productImage: item.productImage
+        };
+      });
+      
       // Update quotation with modified items
       await convex.mutation(api.quotations.updateProfessionalQuotation, {
         quotationId: draftQuotation._id,
-        lineItems: updatedItems,
+        lineItems: typedItems,
         performedBy: userId,
       });
 
@@ -154,9 +191,9 @@ export const DELETE = withApiKeyAuth(
 
       // Remove the item
       const existingItems = draftQuotation.lineItems || [];
-      const updatedItems = existingItems.filter(item => item.itemId !== itemId);
+      const filteredItems = existingItems.filter(item => item.itemId !== itemId);
 
-      if (existingItems.length === updatedItems.length) {
+      if (existingItems.length === filteredItems.length) {
         return NextResponse.json(
           { 
             success: false, 
@@ -167,10 +204,27 @@ export const DELETE = withApiKeyAuth(
         );
       }
 
+      // Ensure all remaining items have proper types
+      const typedItems = filteredItems.map(item => ({
+        itemId: item.itemId,
+        productId: item.productId,
+        productName: item.productName,
+        description: item.description ?? undefined,
+        specifications: item.specifications ?? undefined,
+        quantity: Number(item.quantity ?? 0),
+        unit: item.unit,
+        unitPrice: Number(item.unitPrice ?? 0),
+        discount: item.discount ?? undefined,
+        taxRate: Number(item.taxRate ?? 18),
+        lineTotal: Number(item.unitPrice ?? 0) * Number(item.quantity ?? 0),
+        notes: item.notes ?? undefined,
+        productImage: item.productImage ?? undefined
+      }));
+
       // Update quotation with remaining items
       await convex.mutation(api.quotations.updateProfessionalQuotation, {
         quotationId: draftQuotation._id,
-        lineItems: updatedItems,
+        lineItems: typedItems,
         performedBy: userId,
       });
 

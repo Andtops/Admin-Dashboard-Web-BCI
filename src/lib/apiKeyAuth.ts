@@ -591,7 +591,7 @@ export function withApiKeyAuth(
       await logApiKeyUsage(validation.apiKey, request, true);
 
       // Call the actual handler with validated API key and context (for dynamic routes)
-      const response = await handler(request, validation.apiKey, context);
+      const response = await handler(request, validation.apiKey!, context);
       
       // Add CORS headers to all responses
       response.headers.set('Access-Control-Allow-Origin', '*');

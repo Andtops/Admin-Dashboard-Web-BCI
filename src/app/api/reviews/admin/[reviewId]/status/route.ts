@@ -6,11 +6,11 @@ const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { reviewId: string } }
+  params: any
 ) {
   try {
     const { status, moderationReason, moderatedBy } = await request.json();
-    const { reviewId } = params;
+    const { reviewId } = params.params;
 
     if (!status || !moderatedBy) {
       return NextResponse.json(

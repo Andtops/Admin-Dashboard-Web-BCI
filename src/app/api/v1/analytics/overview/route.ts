@@ -68,13 +68,13 @@ export const GET = withApiKeyAuth(
             total: productStats.total,
             active: productStats.active,
             featured: productStats.featured,
-            recentlyUpdated: productStats.recentlyUpdated
+            recentlyAdded: productStats.recentlyAdded
           },
           collections: {
             total: collectionStats.total,
             active: collectionStats.active,
             visible: collectionStats.visible,
-            recentlyUpdated: collectionStats.recentlyUpdated
+            totalProducts: collectionStats.totalProducts
           },
           users: {
             total: userStats.total,

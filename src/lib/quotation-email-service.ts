@@ -3,7 +3,7 @@
  * Handles sending emails for quotation status updates using Gmail API
  */
 
-interface QuotationProduct {
+export interface QuotationProduct {
   productId: string
   productName: string
   quantity: string
@@ -11,7 +11,7 @@ interface QuotationProduct {
   specifications?: string
 }
 
-interface AdminResponse {
+export interface AdminResponse {
   quotedBy: string
   quotedAt: number
   totalAmount?: string
@@ -30,7 +30,7 @@ interface AdminResponse {
   }
 }
 
-interface Quotation {
+export interface Quotation {
   _id: string
   userId: string
   userEmail: string

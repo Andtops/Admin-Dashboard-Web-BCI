@@ -60,9 +60,22 @@ export const POST = withApiKeyAuth(
         });
 
         // Get the newly created quotation
-        draftQuotation = await convex.query(api.quotations.getQuotationById, {
+        const newDraftQuotation = await convex.query(api.quotations.getQuotationById, {
           quotationId: result.quotationId
         });
+        
+        if (!newDraftQuotation) {
+          return NextResponse.json(
+            { 
+              success: false, 
+              error: 'Failed to retrieve created draft quotation',
+              code: 'DRAFT_RETRIEVAL_ERROR'
+            },
+            { status: 500 }
+          );
+        }
+        
+        draftQuotation = newDraftQuotation;
       }
 
       if (!draftQuotation) {
@@ -80,22 +93,41 @@ export const POST = withApiKeyAuth(
       const existingItems = draftQuotation.lineItems || [];
       const newItemId = `item_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       
+      // Create a properly typed line item
       const newLineItem = {
         itemId: newItemId,
         productId: item.productId,
         productName: item.name,
-        description: item.description || '',
-        specifications: item.specifications || '',
-        quantity: item.quantity || 1,
+        description: item.description || undefined,
+        specifications: item.specifications || undefined,
+        quantity: Number(item.quantity || 1),
         unit: item.unit || 'piece',
         unitPrice: 0,
+        discount: undefined,
         taxRate: 18,
         lineTotal: 0,
-        notes: item.notes || '',
-        productImage: item.image || '', // Store product image
-      };
+        notes: item.notes || undefined,
+        productImage: item.image || undefined
+      } as const;
 
-      const updatedLineItems = [...existingItems, newLineItem];
+      // Ensure all items in the array are properly typed
+      const typedItems = existingItems.map(item => ({
+        itemId: item.itemId,
+        productId: item.productId,
+        productName: item.productName,
+        description: item.description ?? undefined,
+        specifications: item.specifications ?? undefined,
+        quantity: Number(item.quantity ?? 0),
+        unit: item.unit,
+        unitPrice: Number(item.unitPrice ?? 0),
+        discount: item.discount ?? undefined,
+        taxRate: Number(item.taxRate ?? 18),
+        lineTotal: Number(item.unitPrice ?? 0) * Number(item.quantity ?? 0),
+        notes: item.notes ?? undefined,
+        productImage: item.productImage ?? undefined
+      }));
+
+      const updatedLineItems = [...typedItems, newLineItem];
 
       // Update quotation with new item
       await convex.mutation(api.quotations.updateProfessionalQuotation, {

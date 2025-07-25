@@ -5,6 +5,21 @@ import { withApiKeyAuth } from "@/lib/apiKeyAuth";
 
 const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
+interface Visitor {
+  country: string;
+  city: string;
+  lastSeen: number;
+}
+
+interface LocationData {
+  lat: number;
+  lng: number;
+  count: number;
+  country: string;
+  city: string;
+  visitors: Visitor[];
+}
+
 /**
  * GET /api/v1/analytics/visitor-locations
  * Get visitor location data for the globe visualization
@@ -17,13 +32,13 @@ export const GET = withApiKeyAuth(
     const visitorLocations = await convex.query(api.analytics.getVisitorLocations);
 
     // Transform data for globe visualization
-    const globeData = visitorLocations?.map((location) => ({
+    const globeData = visitorLocations?.map((location: LocationData) => ({
       lat: location.lat,
       lng: location.lng,
       count: location.count,
       country: location.country,
       city: location.city,
-      visitors: location.visitors.map(visitor => ({
+      visitors: location.visitors.map((visitor: Visitor) => ({
         country: visitor.country,
         city: visitor.city,
         lastSeen: visitor.lastSeen,

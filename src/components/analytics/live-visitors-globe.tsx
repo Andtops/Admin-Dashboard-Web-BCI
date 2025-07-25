@@ -21,6 +21,8 @@ interface VisitorLocation {
   count: number;
   country: string;
   city: string;
+  color?: string;
+  activityLevel?: string;
   visitors: Array<{
     country: string;
     city: string;
@@ -29,7 +31,7 @@ interface VisitorLocation {
 }
 
 export function LiveVisitorsGlobe() {
-  const globeRef = useRef<any>();
+  const globeRef = useRef<any>(null);
   const [globeReady, setGlobeReady] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState<VisitorLocation | null>(null);
 
@@ -87,7 +89,7 @@ export function LiveVisitorsGlobe() {
   const globeData = visitorLocations?.map((location) => {
     // Safety check for visitors array
     const visitors = location.visitors || [];
-    const lastSeenTimes = visitors.length > 0 ? visitors.map(v => v.lastSeen) : [Date.now()];
+    const lastSeenTimes = visitors.length > 0 ? visitors.map((v: any) => v.lastSeen) : [Date.now()];
     const maxLastSeen = Math.max(...lastSeenTimes);
     
     return {

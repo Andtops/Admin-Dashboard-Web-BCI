@@ -37,6 +37,7 @@ export interface AdminSession {
   isActive: boolean;
   loginTime: number;
   expiresAt: number;
+  [key: string]: any; // Index signature for JWT compatibility
 }
 
 // CSRF token generation
@@ -51,11 +52,11 @@ export async function createSessionToken(adminData: Omit<AdminSession, 'loginTim
   const now = Date.now();
   const expiresAt = now + SESSION_DURATION;
   
-  const payload: AdminSession = {
+  const payload = {
     ...adminData,
     loginTime: now,
     expiresAt,
-  };
+  } as AdminSession;
 
   const token = await new SignJWT(payload)
     .setProtectedHeader({ alg: 'HS256' })
@@ -139,7 +140,7 @@ export async function getSessionFromRequest(request: NextRequest): Promise<Admin
 
 // Get session from server-side cookies
 export async function getServerSession(): Promise<AdminSession | null> {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const token = cookieStore.get(SESSION_COOKIE_NAME)?.value;
   
   if (!token) {
@@ -173,13 +174,7 @@ export const sessionOptions = {
   },
 };
 
-// Type for iron-session
-declare module 'iron-session' {
-  interface IronSessionData {
-    admin?: AdminSession;
-    csrfToken?: string;
-  }
-}
+// Note: iron-session types removed as the module is not available
 
 // Refresh session token (extend expiration)
 export async function refreshSessionToken(currentToken: string): Promise<string | null> {

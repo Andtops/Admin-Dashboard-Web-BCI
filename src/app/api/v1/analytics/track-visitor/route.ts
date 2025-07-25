@@ -117,10 +117,11 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error("��� Visitor tracking API error:", error);
+    const err = error as Error;
     console.error("❌ Error details:", {
-      message: error.message,
-      stack: error.stack,
-      name: error.name
+      message: err.message,
+      stack: err.stack,
+      name: err.name
     });
     
     return NextResponse.json(
@@ -128,7 +129,7 @@ export async function POST(request: NextRequest) {
         success: false,
         error: "Failed to track visitor",
         code: "INTERNAL_ERROR",
-        details: process.env.NODE_ENV === 'development' ? error.message : undefined
+        details: process.env.NODE_ENV === 'development' ? err.message : undefined
       },
       { status: 500 }
     );

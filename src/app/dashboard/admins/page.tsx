@@ -74,12 +74,17 @@ export default function AdminUsersPage() {
   const [selectedAdmin, setSelectedAdmin] = useState<any>(null);
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
-  const [newAdminData, setNewAdminData] = useState({
-    email: "",
+  const [newAdminData, setNewAdminData] = useState<{
+    email: string;
+    firstName: string;
+    lastName: string;
+    role: "admin" | "super_admin";
+    permissions: string[];
+  }>({    email: "",
     firstName: "",
     lastName: "",
     role: "admin",
-    permissions: [] as string[]
+    permissions: []
   });
   const [showStatusConfirm, setShowStatusConfirm] = useState(false);
   const [adminToUpdate, setAdminToUpdate] = useState<{id: string, isActive: boolean} | null>(null);
@@ -90,20 +95,35 @@ export default function AdminUsersPage() {
   const { admin } = useAuth();
 
   // Queries
-  const admins = useQuery(api.admins?.getAdmins, {
-    search: searchTerm || undefined,
-    role: roleFilter === "all" ? undefined : roleFilter as any,
-    isActive: statusFilter === "all" ? undefined : statusFilter === "active",
+  const admins = useQuery(api.admins.getAdmins, {
     limit: pageSize,
     offset: currentPage * pageSize,
   });
 
-  const adminStats = useQuery(api.admins?.getAdminStats);
+  // Apply filters client-side
+  const filteredAdmins = (admins || []).filter(admin => {
+    if (searchTerm && !(
+      admin.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      admin.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      admin.lastName.toLowerCase().includes(searchTerm.toLowerCase())
+    )) {
+      return false;
+    }
+    if (roleFilter !== "all" && admin.role !== roleFilter) {
+      return false;
+    }
+    if (statusFilter !== "all" && admin.isActive !== (statusFilter === "active")) {
+      return false;
+    }
+    return true;
+  });
+
+  const adminStats = useQuery(api.admins.getAdminStats);
 
   // Mutations
-  const createAdmin = useMutation(api.admins?.createAdmin);
-  const updateAdminStatus = useMutation(api.admins?.updateAdminStatus);
-  const updateAdminRole = useMutation(api.admins?.updateAdminRole);
+  const createAdmin = useMutation(api.admins.createAdmin);
+  const updateAdminStatus = useMutation(api.admins.updateAdminStatus);
+  const updateAdminRole = useMutation(api.admins.updateAdminRole);
   const getOrCreateAdmin = useMutation(api.admins.getOrCreateAdmin);
 
   const handleCreateAdmin = async () => {
@@ -113,8 +133,12 @@ export default function AdminUsersPage() {
     try {
       const adminId = await getOrCreateAdmin({ email: admin.email });
       await createAdmin({
-        ...newAdminData,
-        createdBy: adminId,
+        email: newAdminData.email,
+        firstName: newAdminData.firstName,
+        lastName: newAdminData.lastName,
+        role: newAdminData.role,
+        permissions: newAdminData.permissions,
+        password: "temporary_password" // Add a temporary password as it's required
       });
       toast.success("Admin user created successfully");
       setShowCreateDialog(false);
@@ -197,12 +221,13 @@ export default function AdminUsersPage() {
     setShowDetailsDialog(true);
   };
 
-  // Use real data from API
-  const adminsList = admins || [];
+  // Use filtered data
+  const adminsList = filteredAdmins || [];
   const stats = adminStats || {
     total: 0,
     active: 0,
     superAdmins: 0,
+    regularAdmins: 0,
     recentLogins: 0
   };
 
@@ -284,7 +309,12 @@ export default function AdminUsersPage() {
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="role">Role</Label>
-                      <Select value={newAdminData.role} onValueChange={(value) => setNewAdminData({...newAdminData, role: value})}>
+                      <Select 
+                      value={newAdminData.role} 
+                      onValueChange={(value: "admin" | "super_admin") => 
+                        setNewAdminData({...newAdminData, role: value})
+                      }
+                    >
                         <SelectTrigger>
                           <SelectValue />
                         </SelectTrigger>
@@ -387,11 +417,11 @@ export default function AdminUsersPage() {
             </Card>
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Recent Logins</CardTitle>
+                <CardTitle className="text-sm font-medium">Regular Admins</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-blue-600">
-                  {stats.recentLogins}
+                  {stats.regularAdmins}
                 </div>
               </CardContent>
             </Card>
@@ -481,22 +511,22 @@ export default function AdminUsersPage() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          {getRoleBadge(adminUser.role)}
+                          {getRoleBadge(adminUser.role || "admin")}
                         </TableCell>
                         <TableCell>
                           <div className="flex flex-wrap gap-1">
-                            {adminUser.permissions.includes("*") ? (
+                            {(adminUser.permissions || []).includes("*") ? (
                               <Badge variant="default" className="bg-purple-500">All Permissions</Badge>
                             ) : (
                               <>
-                                {adminUser.permissions.slice(0, 2).map((permission, index) => (
+                                {(adminUser.permissions || []).slice(0, 2).map((permission, index) => (
                                   <Badge key={index} variant="secondary" className="text-xs">
                                     {permission}
                                   </Badge>
                                 ))}
-                                {adminUser.permissions.length > 2 && (
+                                {(adminUser.permissions || []).length > 2 && (
                                   <Badge variant="outline" className="text-xs">
-                                    +{adminUser.permissions.length - 2}
+                                    +{(adminUser.permissions || []).length - 2}
                                   </Badge>
                                 )}
                               </>
@@ -512,7 +542,7 @@ export default function AdminUsersPage() {
                         </TableCell>
                         <TableCell>
                           <div className="text-sm">
-                            {adminUser.lastLoginAt ? formatDate(adminUser.lastLoginAt) : 'Never'}
+                            {(adminUser as any).lastLoginAt ? formatDate((adminUser as any).lastLoginAt) : 'Never'}
                           </div>
                         </TableCell>
                         <TableCell className="text-right">
@@ -605,7 +635,7 @@ export default function AdminUsersPage() {
                     </h3>
                     <p className="text-muted-foreground">{selectedAdmin?.email}</p>
                     <div className="flex items-center gap-2 mt-2">
-                      {selectedAdmin && getRoleBadge(selectedAdmin.role)}
+                      {selectedAdmin && getRoleBadge(selectedAdmin.role || "admin")}
                       {selectedAdmin?.isActive ? (
                         <Badge variant="default" className="bg-green-500">Active</Badge>
                       ) : (

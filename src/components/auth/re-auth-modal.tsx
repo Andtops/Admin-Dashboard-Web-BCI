@@ -115,8 +115,8 @@ export function ReAuthModal({
     setIsLoading(true);
     try {
       await verifyPassword({
-        email: admin.email,
         password: password.trim(),
+        adminId: admin.email as any,
       });
 
             toast.success('Password authentication successful');

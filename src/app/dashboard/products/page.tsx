@@ -349,7 +349,7 @@ export default function ProductsPage() {
           .map(url => ({ url: url.trim() })),
         status: editProduct.status as any,
         featured: editProduct.featured,
-        quantity: editProduct.quantity,
+        quantity: parseInt(editProduct.quantity) || 0,
         tags: [], // Add tags if needed
         // Include priceRange from existing product or default values
         priceRange: selectedProduct.priceRange || {
@@ -448,7 +448,7 @@ export default function ProductsPage() {
           .map(url => ({ url: url.trim() })),
         status: newProduct.status as any,
         featured: newProduct.featured,
-        quantity: newProduct.quantity,
+        quantity: parseInt(newProduct.quantity) || 0,
       };
 
       const dataSize = JSON.stringify(productData).length;
@@ -487,7 +487,7 @@ export default function ProductsPage() {
         applications: "",
         status: "active",
         featured: false,
-        quantity: 0,
+        quantity: "0",
         images: [],
         collections: [],
       });
@@ -1452,8 +1452,8 @@ export default function ProductsPage() {
                       <Input
                       type="number"
                       placeholder="e.g., 100"
-                      value={newProduct.quantity || 0}
-                      onChange={(e) => setNewProduct(prev => ({ ...prev, quantity: parseInt(e.target.value) || 0 }))}
+                      value={newProduct.quantity || "0"}
+                      onChange={(e) => setNewProduct(prev => ({ ...prev, quantity: e.target.value }))}
                       className="transition-all focus:ring-2 focus:ring-primary/20"
                       min="0"
                       step="1"
@@ -2119,7 +2119,7 @@ export default function ProductsPage() {
                           type="number"
                           placeholder="e.g., 100"
                           value={editProduct.quantity || 0}
-                          onChange={(e) => setEditProduct(prev => ({ ...prev, quantity: parseInt(e.target.value) || 0 }))}
+                          onChange={(e) => setEditProduct(prev => ({ ...prev, quantity: e.target.value }))}
                           className="transition-all focus:ring-2 focus:ring-primary/20"
                           min="0"
                           step="1"

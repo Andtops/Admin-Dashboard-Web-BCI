@@ -3,7 +3,7 @@ import { useAuth } from '@/contexts/auth-context';
 export function useCSRF() {
   const { csrfToken } = useAuth();
 
-  const getCSRFHeaders = () => {
+  const getCSRFHeaders = (): Record<string, string> => {
     if (!csrfToken) return {};
     
     return {
@@ -15,11 +15,26 @@ export function useCSRF() {
     url: string,
     options: RequestInit = {}
   ): Promise<Response> => {
-    const headers = {
+    const csrfHeaders = getCSRFHeaders();
+    const headers: Record<string, string> = {
       'Content-Type': 'application/json',
-      ...getCSRFHeaders(),
-      ...options.headers,
+      ...csrfHeaders,
     };
+
+    // Add any additional headers from options
+    if (options.headers) {
+      if (options.headers instanceof Headers) {
+        options.headers.forEach((value, key) => {
+          headers[key] = value;
+        });
+      } else if (Array.isArray(options.headers)) {
+        options.headers.forEach(([key, value]) => {
+          headers[key] = value;
+        });
+      } else {
+        Object.assign(headers, options.headers);
+      }
+    }
 
     return fetch(url, {
       ...options,

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { ConvexHttpClient } from 'convex/browser';
 import { api } from '../../../../../convex/_generated/api';
 import { withApiKeyAuth } from '@/lib/apiKeyAuth';
-import { sendNewQuotationNotificationEmail } from '@/lib/quotation-email-service';
+import { sendNewQuotationNotificationEmail, Quotation } from '@/lib/quotation-email-service';
 
 // Initialize Convex client for server-side operations
 const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
@@ -32,7 +32,7 @@ export const GET = withApiKeyAuth(
         );
       }
 
-      let quotations;
+      let quotations: any[] = [];
 
       if (userId) {
         try {
@@ -162,20 +162,37 @@ export const POST = withApiKeyAuth(
       // Send admin notification email (non-blocking)
       try {
         const quotationData = {
-          _id: quotationId,
+          _id: quotationId.quotationNumber,
           userId: body.userId,
           userEmail: body.userEmail,
           userName: body.userName,
           userPhone: body.userPhone,
           businessName: body.businessName,
-          products: body.products,
+          products: body.products.map((product: any) => ({
+            productId: product.productId,
+            productName: product.productName,
+            quantity: Number(product.quantity) || 1,
+            unit: product.unit || 'pcs',
+            specifications: product.specifications
+          })),
+          lineItems: body.products.map((product: any, index: number) => ({
+            itemId: `item_${index + 1}`,
+            productId: product.productId,
+            productName: product.productName,
+            quantity: Number(product.quantity) || 1,
+            unit: product.unit || 'pcs',
+            unitPrice: Number(product.unitPrice) || 0,
+            taxRate: Number(product.taxRate) || 18,
+            lineTotal: Number(product.lineTotal) || 0,
+            specifications: product.specifications
+          })),
           additionalRequirements: body.additionalRequirements,
           deliveryLocation: body.deliveryLocation,
           urgency: body.urgency || 'standard',
-          status: 'pending' as const,
+          status: 'pending',
           createdAt: Date.now(),
           updatedAt: Date.now()
-        };
+        } as Quotation;
 
         await sendNewQuotationNotificationEmail({
           quotation: quotationData,

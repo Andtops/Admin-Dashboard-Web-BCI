@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ConvexHttpClient } from 'convex/browser';
 import { api } from '../../../../../convex/_generated/api';
+import { Id } from '../../../../../convex/_generated/dataModel';
 import { 
   getSessionFromRequest, 
   createSessionToken, 
@@ -30,7 +31,7 @@ export async function GET(request: NextRequest) {
     // Validate session with Convex (check if admin still exists and is active)
     console.log('Session API: Validating with Convex, adminId:', session.adminId);
     const validationResult = await convex.action(api.auth.validateAdminSession, {
-      adminId: session.adminId,
+      adminId: session.adminId as Id<'admins'>,
     });
     console.log('Session API: Validation result:', validationResult);
 
@@ -48,7 +49,7 @@ export async function GET(request: NextRequest) {
     const sessionDuration = session.expiresAt - session.loginTime;
     const shouldRefresh = sessionAge > sessionDuration / 2;
 
-    let response = NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       admin: {
         _id: validationResult.admin._id,

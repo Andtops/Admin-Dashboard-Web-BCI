@@ -325,7 +325,7 @@ export default function UsersPage() {
                 <CardTitle className="text-sm font-medium">GST Verified</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-blue-600">{userStats?.gstVerified || 0}</div>
+                <div className="text-2xl font-bold text-blue-600">{(userStats as any)?.gstVerified || 0}</div>
               </CardContent>
             </Card>
           </div>
