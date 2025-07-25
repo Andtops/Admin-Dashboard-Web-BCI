@@ -63,7 +63,8 @@ import {
   Link,
   Camera,
   Trash2,
-  Wand2
+  Wand2,
+  MessageSquare
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { RemoveBgUpload } from "@/components/ui/remove-bg-upload";
@@ -71,6 +72,7 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { useAuth } from "@/contexts/auth-context";
 import { toast } from "sonner";
+import { StarDisplay } from "@/components/ui/star-rating";
 
 export default function ProductsPage() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -490,9 +492,7 @@ export default function ProductsPage() {
         collections: [],
       });
 
-      // Reset upload states
-      setUploadingImages(false);
-      setDragActive(false);
+      // Reset upload states - handled by RemoveBgUpload component
     } catch (error) {
       toast.error("Failed to create product");
       console.error(error);

@@ -51,7 +51,7 @@ export async function createSessionToken(adminData: Omit<AdminSession, 'loginTim
   const now = Date.now();
   const expiresAt = now + SESSION_DURATION;
   
-  const payload: AdminSession & Record<string, any> = {
+  const payload: AdminSession = {
     ...adminData,
     loginTime: now,
     expiresAt,
@@ -139,7 +139,7 @@ export async function getSessionFromRequest(request: NextRequest): Promise<Admin
 
 // Get session from server-side cookies
 export async function getServerSession(): Promise<AdminSession | null> {
-  const cookieStore = await cookies();
+  const cookieStore = cookies();
   const token = cookieStore.get(SESSION_COOKIE_NAME)?.value;
   
   if (!token) {

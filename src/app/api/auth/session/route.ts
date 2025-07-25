@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
 
     // Validate session with Convex (check if admin still exists and is active)
     console.log('Session API: Validating with Convex, adminId:', session.adminId);
-    const validationResult = await convex.query(api.auth.validateAdminSession, {
+    const validationResult = await convex.action(api.auth.validateAdminSession, {
       adminId: session.adminId,
     });
     console.log('Session API: Validation result:', validationResult);

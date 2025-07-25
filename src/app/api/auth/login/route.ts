@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Authenticate with Convex
-    const authResult = await convex.mutation(api.auth.authenticateAdmin, {
+    const authResult = await convex.action(api.auth.authenticateAdmin, {
       email,
       password,
     });

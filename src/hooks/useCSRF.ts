@@ -15,16 +15,11 @@ export function useCSRF() {
     url: string,
     options: RequestInit = {}
   ): Promise<Response> => {
-    const csrfHeaders = getCSRFHeaders();
-    const headers: Record<string, string> = {
+    const headers = {
       'Content-Type': 'application/json',
+      ...getCSRFHeaders(),
       ...options.headers,
     };
-
-    // Only add CSRF token if it exists
-    if (csrfHeaders['X-CSRF-Token']) {
-      headers['X-CSRF-Token'] = csrfHeaders['X-CSRF-Token'];
-    }
 
     return fetch(url, {
       ...options,

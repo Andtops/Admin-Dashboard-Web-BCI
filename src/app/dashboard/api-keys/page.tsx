@@ -328,16 +328,6 @@ export default function APIKeysPage() {
           description: "Permanently remove user accounts"
         },
         {
-          name: "cookie-consent:read",
-          label: "Cookie Consent Read",
-          description: "View cookie consent preferences and history"
-        },
-        {
-          name: "cookie-consent:write",
-          label: "Cookie Consent Write",
-          description: "Save and manage cookie consent preferences"
-        },
-        {
           name: "webhooks.read",
           label: "Webhooks Read",
           description: "View webhook configurations and logs"

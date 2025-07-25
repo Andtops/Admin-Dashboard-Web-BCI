@@ -117,6 +117,7 @@ export const removeShopifyFields = mutation({
         const cleanUser = {
           userId: (user as any).userId,
           email: user.email,
+          password: (user as any).password, // Make sure to carry over the password
           firstName: user.firstName,
           lastName: user.lastName,
           phone: user.phone,

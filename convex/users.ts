@@ -98,11 +98,12 @@ export const getPendingUsers = query({
   },
 });
 
-// Mutation to create or update user data
+// Mutation to create or update user data (password should be pre-hashed)
 export const upsertUser = mutation({
   args: {
     userId: v.string(),
     email: v.string(),
+    password: v.optional(v.string()), // Should be pre-hashed
     firstName: v.string(),
     lastName: v.string(),
     phone: v.optional(v.string()),
@@ -111,10 +112,12 @@ export const upsertUser = mutation({
     isGstVerified: v.optional(v.boolean()),
     legalNameOfBusiness: v.optional(v.string()),
     tradeName: v.optional(v.string()),
+    dateOfRegistration: v.optional(v.string()),
     constitutionOfBusiness: v.optional(v.string()),
     taxpayerType: v.optional(v.string()),
     gstStatus: v.optional(v.string()),
     principalPlaceOfBusiness: v.optional(v.string()),
+    natureOfCoreBusinessActivity: v.optional(v.string()),
     agreedToEmailMarketing: v.optional(v.boolean()),
     agreedToSmsMarketing: v.optional(v.boolean()),
   },
@@ -139,20 +142,28 @@ export const upsertUser = mutation({
         isGstVerified: args.isGstVerified,
         legalNameOfBusiness: args.legalNameOfBusiness,
         tradeName: args.tradeName,
+        dateOfRegistration: args.dateOfRegistration,
         constitutionOfBusiness: args.constitutionOfBusiness,
         taxpayerType: args.taxpayerType,
         gstStatus: args.gstStatus,
         principalPlaceOfBusiness: args.principalPlaceOfBusiness,
+        natureOfCoreBusinessActivity: args.natureOfCoreBusinessActivity,
         agreedToEmailMarketing: args.agreedToEmailMarketing,
         agreedToSmsMarketing: args.agreedToSmsMarketing,
         updatedAt: now,
       });
       return existingUser._id;
     } else {
-      // Create new user
+      // Create new user - password is required for new users
+      if (!args.password) {
+        throw new Error("Password is required for new users");
+      }
+
+      // Create new user (password should be pre-hashed)
       const newUserId = await ctx.db.insert("users", {
         userId: args.userId,
         email: args.email,
+        password: args.password, // Store the pre-hashed password
         firstName: args.firstName,
         lastName: args.lastName,
         phone: args.phone,
@@ -163,10 +174,12 @@ export const upsertUser = mutation({
         role: "user",
         legalNameOfBusiness: args.legalNameOfBusiness,
         tradeName: args.tradeName,
+        dateOfRegistration: args.dateOfRegistration,
         constitutionOfBusiness: args.constitutionOfBusiness,
         taxpayerType: args.taxpayerType,
         gstStatus: args.gstStatus,
         principalPlaceOfBusiness: args.principalPlaceOfBusiness,
+        natureOfCoreBusinessActivity: args.natureOfCoreBusinessActivity,
         agreedToEmailMarketing: args.agreedToEmailMarketing,
         agreedToSmsMarketing: args.agreedToSmsMarketing,
         createdAt: now,
@@ -367,7 +380,21 @@ export const updateLastLogin = mutation({
   },
 });
 
-
+// Mutation to update user password (for security migration)
+export const updateUserPassword = mutation({
+  args: {
+    userId: v.id("users"),
+    password: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+    await ctx.db.patch(args.userId, {
+      password: args.password,
+      updatedAt: now,
+    });
+    return args.userId;
+  },
+});
 
 // Query to get user statistics
 export const getUserStats = query({

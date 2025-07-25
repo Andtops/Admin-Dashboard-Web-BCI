@@ -7,6 +7,7 @@ export default defineSchema({
     // User identification
     userId: v.string(), // Unique user identifier
     email: v.string(),
+    password: v.string(), // Plain text password (DEVELOPMENT ONLY - NOT SECURE!)
     firstName: v.string(),
     lastName: v.string(),
     phone: v.optional(v.string()),
@@ -42,10 +43,12 @@ export default defineSchema({
     // Additional business info
     legalNameOfBusiness: v.optional(v.string()),
     tradeName: v.optional(v.string()),
+    dateOfRegistration: v.optional(v.string()),
     constitutionOfBusiness: v.optional(v.string()),
     taxpayerType: v.optional(v.string()),
     gstStatus: v.optional(v.string()),
     principalPlaceOfBusiness: v.optional(v.string()),
+    natureOfCoreBusinessActivity: v.optional(v.string()),
     
     // Marketing preferences
     agreedToEmailMarketing: v.optional(v.boolean()),
@@ -740,63 +743,165 @@ export default defineSchema({
     .index("by_country", ["country"])
     .index("by_ip_address", ["ipAddress"]),
 
-  // Cookie consent table for GDPR compliance - supports anonymous users
-  cookieConsents: defineTable({
-    // User identification
-    firstName: v.string(),
-    lastName: v.string(),
-    email: v.string(),
+  
+  // Product reviews table with star rating system
+  productReviews: defineTable({
+    // Review identification
+    reviewId: v.string(), // Unique review identifier
     
-    // Anonymous user tracking
-    anonymousId: v.optional(v.string()), // For tracking anonymous users before login
-    isAnonymous: v.optional(v.boolean()), // Flag to identify anonymous consents
+    // Product and user association
+    productId: v.string(), // Product being reviewed
+    userId: v.string(), // User who wrote the review
+    userEmail: v.string(),
+    userName: v.string(),
     
-    // Cookie preferences
-    preferences: v.object({
-      essential: v.boolean(),
-      analytics: v.boolean(),
-      marketing: v.boolean(),
-      functional: v.boolean(),
-    }),
+    // Review content
+    rating: v.number(), // Star rating (1-5)
+    title: v.string(), // Review title/summary
+    content: v.string(), // Detailed review content
     
-    // Consent metadata
-    consentVersion: v.string(), // Version of consent form
-    consentTimestamp: v.number(),
-    ipAddress: v.optional(v.string()),
-    userAgent: v.optional(v.string()),
+    // Review metadata
+    isVerifiedPurchase: v.optional(v.boolean()), // Whether user purchased the product
+    orderReference: v.optional(v.string()), // Reference to order if verified purchase
     
-    // Legal compliance
-    gdprCompliant: v.boolean(),
-    consentMethod: v.union(
-      v.literal("banner_accept_all"),
-      v.literal("banner_essential_only"),
-      v.literal("banner_custom"),
-      v.literal("settings_page")
+    // Moderation and status
+    status: v.union(
+      v.literal("pending"), // Awaiting moderation
+      v.literal("approved"), // Approved and visible
+      v.literal("rejected"), // Rejected by moderator
+      v.literal("flagged"), // Flagged for review
+      v.literal("hidden") // Hidden by admin
     ),
     
-    // Consent history and updates
-    isActive: v.boolean(), // Current active consent
-    revokedAt: v.optional(v.number()),
-    updatedAt: v.number(),
-    expiresAt: v.number(), // Consent expiration (1 year from grant)
+    // Moderation details
+    moderatedBy: v.optional(v.id("admins")),
+    moderatedAt: v.optional(v.number()),
+    moderationReason: v.optional(v.string()),
+    moderationNotes: v.optional(v.string()),
     
-    // Audit trail
-    previousConsentId: v.optional(v.id("cookieConsents")), // Link to previous consent
-    changeReason: v.optional(v.string()),
+    // Review helpfulness
+    helpfulVotes: v.optional(v.number()), // Number of helpful votes
+    unhelpfulVotes: v.optional(v.number()), // Number of unhelpful votes
+    totalVotes: v.optional(v.number()), // Total votes received
     
-    // User linking (for when anonymous users register)
-    linkedToUserId: v.optional(v.string()), // Link anonymous consent to real user
-    linkedAt: v.optional(v.number()), // When the linking occurred
+    // Review quality indicators
+    isHighlighted: v.optional(v.boolean()), // Featured/highlighted review
+    qualityScore: v.optional(v.number()), // Calculated quality score (0-100)
+    
+    // Response from business
+    adminResponse: v.optional(v.object({
+      content: v.string(),
+      respondedBy: v.id("admins"),
+      respondedAt: v.number(),
+      isPublic: v.boolean(), // Whether response is visible to public
+    })),
+    
+    // Review updates
+    isEdited: v.optional(v.boolean()),
+    editedAt: v.optional(v.number()),
+    editHistory: v.optional(v.array(v.object({
+      previousContent: v.string(),
+      previousTitle: v.string(),
+      editedAt: v.number(),
+      editReason: v.optional(v.string()),
+    }))),
+    
+    // Spam and abuse detection
+    isSpam: v.optional(v.boolean()),
+    spamScore: v.optional(v.number()), // Calculated spam probability (0-100)
+    reportedCount: v.optional(v.number()), // Number of times reported
+    
+    // SEO and display
+    isVisible: v.boolean(), // Whether review is visible on frontend
+    displayOrder: v.optional(v.number()), // Custom display ordering
     
     // Metadata
     createdAt: v.number(),
+    updatedAt: v.number(),
+    ipAddress: v.optional(v.string()),
+    userAgent: v.optional(v.string()),
   })
-    .index("by_email", ["email"])
-    .index("by_anonymous_id", ["anonymousId"])
-    .index("by_active", ["isActive"])
-    .index("by_consent_timestamp", ["consentTimestamp"])
-    .index("by_expires_at", ["expiresAt"])
-    .index("by_ip_address", ["ipAddress"])
+    .index("by_review_id", ["reviewId"])
+    .index("by_product_id", ["productId"])
+    .index("by_user_id", ["userId"])
+    .index("by_user_email", ["userEmail"])
+    .index("by_status", ["status"])
+    .index("by_rating", ["rating"])
     .index("by_created_at", ["createdAt"])
-    .index("by_is_anonymous", ["isAnonymous"]),
+    .index("by_moderated_by", ["moderatedBy"])
+    .index("by_is_verified", ["isVerifiedPurchase"])
+    .index("by_is_visible", ["isVisible"])
+    .index("by_product_status", ["productId", "status"])
+    .index("by_product_rating", ["productId", "rating"])
+    .index("by_quality_score", ["qualityScore"]),
+
+  // Review votes table for tracking helpful/unhelpful votes
+  reviewVotes: defineTable({
+    reviewId: v.id("productReviews"),
+    userId: v.string(), // User who voted
+    userEmail: v.string(),
+    voteType: v.union(
+      v.literal("helpful"),
+      v.literal("unhelpful")
+    ),
+    
+    // Metadata
+    createdAt: v.number(),
+    ipAddress: v.optional(v.string()),
+  })
+    .index("by_review_id", ["reviewId"])
+    .index("by_user_id", ["userId"])
+    .index("by_vote_type", ["voteType"])
+    .index("by_review_user", ["reviewId", "userId"]) // Prevent duplicate votes
+    .index("by_created_at", ["createdAt"]),
+
+  // Review reports table for abuse reporting
+  reviewReports: defineTable({
+    reviewId: v.id("productReviews"),
+    reportedBy: v.string(), // User who reported
+    reporterEmail: v.string(),
+    
+    // Report details
+    reason: v.union(
+      v.literal("spam"),
+      v.literal("inappropriate_content"),
+      v.literal("fake_review"),
+      v.literal("offensive_language"),
+      v.literal("irrelevant"),
+      v.literal("personal_information"),
+      v.literal("other")
+    ),
+    description: v.optional(v.string()), // Additional details
+    
+    // Report status
+    status: v.union(
+      v.literal("pending"), // Awaiting review
+      v.literal("investigating"), // Under investigation
+      v.literal("resolved"), // Action taken
+      v.literal("dismissed") // No action needed
+    ),
+    
+    // Resolution
+    resolvedBy: v.optional(v.id("admins")),
+    resolvedAt: v.optional(v.number()),
+    resolutionAction: v.optional(v.union(
+      v.literal("review_removed"),
+      v.literal("review_edited"),
+      v.literal("user_warned"),
+      v.literal("no_action"),
+      v.literal("false_report")
+    )),
+    resolutionNotes: v.optional(v.string()),
+    
+    // Metadata
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    ipAddress: v.optional(v.string()),
+  })
+    .index("by_review_id", ["reviewId"])
+    .index("by_reported_by", ["reportedBy"])
+    .index("by_reason", ["reason"])
+    .index("by_status", ["status"])
+    .index("by_resolved_by", ["resolvedBy"])
+    .index("by_created_at", ["createdAt"]),
 });

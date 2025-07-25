@@ -116,7 +116,7 @@ export const POST = withApiKeyAuth(
       const body = await request.json();
       
       // Validate required fields
-      const requiredFields = ['userId', 'email', 'firstName', 'lastName'];
+      const requiredFields = ['userId', 'email', 'firstName', 'lastName', 'password'];
       for (const field of requiredFields) {
         if (!body[field]) {
           return NextResponse.json(
@@ -134,6 +134,7 @@ export const POST = withApiKeyAuth(
       const userId = await convex.mutation(api.users.upsertUser, {
         userId: body.userId,
         email: body.email,
+        password: body.password, // Pass the already hashed password
         firstName: body.firstName,
         lastName: body.lastName,
         phone: body.phone,

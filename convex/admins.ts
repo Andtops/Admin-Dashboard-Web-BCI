@@ -1,121 +1,129 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { query, mutation, internalQuery, internalMutation } from "./_generated/server";
 
-// Query to get all admins (simplified)
+// Query to get admin by email
+export const getByEmail = query({
+  args: { email: v.string() },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("admins")
+      .withIndex("by_email", (q) => q.eq("email", args.email))
+      .first();
+  },
+});
+
+// Query to get admin by ID
+export const getById = query({
+    args: { adminId: v.id("admins") },
+    handler: async (ctx, args) => {
+        return await ctx.db.get(args.adminId);
+    },
+});
+
+// Query to get all admins
 export const getAdmins = query({
   args: {
-    search: v.optional(v.string()),
     limit: v.optional(v.number()),
     offset: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    // Get all admins
-    const allAdmins = await ctx.db.query("admins").collect();
-
-    // Apply search filter
-    let filteredAdmins = allAdmins;
-    if (args.search) {
-      filteredAdmins = allAdmins.filter(admin =>
-        admin.firstName.toLowerCase().includes(args.search!.toLowerCase()) ||
-        admin.lastName.toLowerCase().includes(args.search!.toLowerCase()) ||
-        admin.email.toLowerCase().includes(args.search!.toLowerCase())
-      );
-    }
-
-    // Sort by creation time (newest first)
-    filteredAdmins.sort((a, b) => b._creationTime - a._creationTime);
-
-    // Apply pagination
-    const offset = args.offset || 0;
     const limit = args.limit || 50;
-    const paginatedAdmins = filteredAdmins.slice(offset, offset + limit);
-
-    // Remove passwords from response
-    const adminsWithoutPasswords = paginatedAdmins.map(admin => {
-      const { password, ...adminData } = admin;
-      return adminData;
-    });
-
-    return {
-      admins: adminsWithoutPasswords,
-      total: filteredAdmins.length,
-      hasMore: offset + limit < filteredAdmins.length,
-    };
+    const offset = args.offset || 0;
+    
+    const allAdmins = await ctx.db.query("admins").collect();
+    
+    // Sort by creation date (newest first)
+    allAdmins.sort((a, b) => (b._creationTime || 0) - (a._creationTime || 0));
+    
+    // Apply pagination
+    return allAdmins.slice(offset, offset + limit);
   },
 });
 
-// Query to get admin by ID (without password)
-export const getAdminById = query({
-  args: { id: v.id("admins") },
-  handler: async (ctx, args) => {
-    const admin = await ctx.db.get(args.id);
-    if (!admin) return null;
-
-    const { password, ...adminData } = admin;
-    return adminData;
-  },
-});
-
-// Query to get admin by email (without password)
-export const getAdminByEmail = query({
-  args: { email: v.string() },
-  handler: async (ctx, args) => {
-    const admin = await ctx.db
-      .query("admins")
-      .withIndex("by_email", (q) => q.eq("email", args.email))
-      .first();
-
-    if (!admin) return null;
-
-    const { password, ...adminData } = admin;
-    return adminData;
-  },
-});
-
-// Simple admin statistics query
+// Query to get admin statistics
 export const getAdminStats = query({
   args: {},
   handler: async (ctx) => {
     const allAdmins = await ctx.db.query("admins").collect();
+    
     return {
       total: allAdmins.length,
+      active: allAdmins.filter(a => a.isActive !== false).length,
+      inactive: allAdmins.filter(a => a.isActive === false).length,
+      superAdmins: allAdmins.filter(a => a.role === "super_admin").length,
+      regularAdmins: allAdmins.filter(a => a.role === "admin" || !a.role).length,
     };
   },
 });
 
-// Mutation to update admin role and permissions (for development setup)
-export const updateAdminRoleAndPermissions = mutation({
+// Mutation to create a new admin (plain text password)
+export const create = mutation({
+    args: {
+        email: v.string(),
+        password: v.string(), // Plain text password
+        firstName: v.string(),
+        lastName: v.string(),
+    },
+    handler: async (ctx, args) => {
+        return await ctx.db.insert("admins", {
+            email: args.email,
+            password: args.password, // Store plain text password
+            firstName: args.firstName,
+            lastName: args.lastName,
+            role: "admin",
+            isActive: true,
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+        });
+    },
+});
+
+// Mutation to create admin with full details
+export const createAdmin = mutation({
   args: {
     email: v.string(),
-    role: v.union(v.literal("admin"), v.literal("super_admin")),
+    password: v.string(), // Plain text password
+    firstName: v.string(),
+    lastName: v.string(),
+    role: v.optional(v.union(v.literal("admin"), v.literal("super_admin"))),
     permissions: v.optional(v.array(v.string())),
   },
   handler: async (ctx, args) => {
-    const admin = await ctx.db
+    // Check if admin already exists
+    const existingAdmin = await ctx.db
       .query("admins")
       .withIndex("by_email", (q) => q.eq("email", args.email))
       .first();
 
-    if (!admin) {
-      throw new Error("Admin not found");
+    if (existingAdmin) {
+      throw new Error("Admin with this email already exists");
     }
 
-    await ctx.db.patch(admin._id, {
-      role: args.role,
+    const now = Date.now();
+    
+    return await ctx.db.insert("admins", {
+      email: args.email,
+      password: args.password, // Store plain text password
+      firstName: args.firstName,
+      lastName: args.lastName,
+      role: args.role || "admin",
       permissions: args.permissions || [],
       isActive: true,
-      updatedAt: Date.now(),
+      createdAt: now,
+      updatedAt: now,
     });
-
-    return { success: true };
   },
 });
 
-// Mutation to get or create admin (for operations)
+// Mutation to get or create admin (for demo purposes)
 export const getOrCreateAdmin = mutation({
-  args: { email: v.string() },
+  args: {
+    email: v.string(),
+    firstName: v.optional(v.string()),
+    lastName: v.optional(v.string()),
+  },
   handler: async (ctx, args) => {
-    // Try to find existing admin
+    // First try to find existing admin
     const existingAdmin = await ctx.db
       .query("admins")
       .withIndex("by_email", (q) => q.eq("email", args.email))
@@ -125,52 +133,91 @@ export const getOrCreateAdmin = mutation({
       return existingAdmin._id;
     }
 
-    // If not found, create a basic admin entry
-    // Note: In production, this should use proper password hashing and secure password generation
+    // Create new admin with default values
+    const now = Date.now();
+    const firstName = args.firstName || "Demo";
+    const lastName = args.lastName || "Admin";
+    
     const adminId = await ctx.db.insert("admins", {
       email: args.email,
-      firstName: "Admin",
-      lastName: "User",
-      password: "", // Empty password - admin should set proper password through admin registration
+      password: "demo_password_hash", // This should be properly hashed in production
+      firstName,
+      lastName,
       role: "admin",
+      permissions: [],
       isActive: true,
-      permissions: ["users.approve", "users.reject"],
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
+      createdAt: now,
+      updatedAt: now,
     });
 
     return adminId;
   },
 });
 
-// Mutation to verify admin password for re-authentication
+// Mutation to update admin status
+export const updateAdminStatus = mutation({
+  args: {
+    adminId: v.id("admins"),
+    isActive: v.boolean(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.adminId, {
+      isActive: args.isActive,
+      updatedAt: Date.now(),
+    });
+    return args.adminId;
+  },
+});
+
+// Mutation to update admin role
+export const updateAdminRole = mutation({
+  args: {
+    adminId: v.id("admins"),
+    role: v.union(v.literal("admin"), v.literal("super_admin")),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.adminId, {
+      role: args.role,
+      updatedAt: Date.now(),
+    });
+    return args.adminId;
+  },
+});
+
+// Mutation to verify admin password (for re-authentication)
 export const verifyAdminPassword = mutation({
   args: {
-    email: v.string(),
+    adminId: v.id("admins"),
     password: v.string(),
   },
   handler: async (ctx, args) => {
-    const admin = await ctx.db
-      .query("admins")
-      .withIndex("by_email", (q) => q.eq("email", args.email))
-      .first();
-
+    const admin = await ctx.db.get(args.adminId);
     if (!admin) {
-      throw new Error("Admin not found");
+      return { success: false, error: "Admin not found" };
     }
 
-    // In production, this should use proper password hashing (bcrypt, etc.)
-    const isValidPassword = admin.password === args.password;
-
-    if (!isValidPassword) {
-      throw new Error("Invalid password");
-    }
-
-    return {
-      success: true,
-      adminId: admin._id,
-      email: admin.email,
-      verifiedAt: Date.now(),
-    };
+    // In a real implementation, you would hash the password and compare
+    // For now, we'll do a simple comparison (this should be improved)
+    const isValid = admin.password === args.password;
+    
+    return { success: isValid };
   },
+});
+
+// internal query to get all admins
+export const internalGetAllAdmins = internalQuery({
+    handler: async (ctx) => {
+        return await ctx.db.query("admins").collect();
+    },
+});
+
+// Internal mutation to update admin password
+export const internalUpdatePassword = internalMutation({
+    args: {
+        adminId: v.id("admins"),
+        password: v.string(),
+    },
+    handler: async (ctx, { adminId, password }) => {
+        await ctx.db.patch(adminId, { password });
+    },
 });

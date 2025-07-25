@@ -50,10 +50,10 @@ import {
   CreditCard,
   Truck,
   MessageSquare,
-  Cookie,
   ChevronRight,
   ChevronsUpDown,
   User,
+  Star,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -180,6 +180,11 @@ export function AdminSidebar({ ...props }: React.ComponentProps<typeof Sidebar>)
       permission: "quotations.read",
     },
     {
+      title: "Reviews",
+      href: "/dashboard/reviews",
+      icon: Star,
+    },
+    {
       title: "Settings",
       icon: Settings,
       permission: "settings.read",
@@ -190,13 +195,7 @@ export function AdminSidebar({ ...props }: React.ComponentProps<typeof Sidebar>)
           icon: Settings,
           permission: "settings.read",
         },
-        {
-          title: "Cookie Consent",
-          href: "/dashboard/cookie-consent",
-          icon: Cookie,
-          permission: "cookie-consent:read",
-        },
-        {
+                {
           title: "Notifications",
           href: "/dashboard/settings/notifications",
           icon: Bell,
