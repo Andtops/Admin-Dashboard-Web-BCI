@@ -163,7 +163,7 @@ export function validateCSRFToken(request: NextRequest, providedToken: string): 
 }
 
 // Session cookie configuration for iron-session (alternative approach)
-export const sessionOptions = {
+export const getSessionOptions = () => ({
   cookieName: SESSION_COOKIE_NAME,
   password: getSessionKey(),
   cookieOptions: {
@@ -172,7 +172,7 @@ export const sessionOptions = {
     sameSite: 'lax' as const,
     maxAge: SESSION_DURATION / 1000,
   },
-};
+});
 
 // Note: iron-session types removed as the module is not available
 
