@@ -24,13 +24,13 @@ export const authenticateUser = action({
           console.log('🔐 Password verification: plain text match');
           return true;
         }
-        
+
         // Then try hashed comparison (for hashed passwords)
         const hashedPassword = hashPassword(password);
         const isHashedMatch = hashedPassword === storedPassword;
-        
+
         console.log('🔐 Password verification: hashed comparison', { match: isHashedMatch });
-        
+
         return isHashedMatch;
       }
 
@@ -41,8 +41,8 @@ export const authenticateUser = action({
       if (!user) {
         // Perform a dummy hash operation to maintain consistent timing
         hashPassword(args.password);
-        return { 
-          success: false, 
+        return {
+          success: false,
           error: "Account not found. Please register first or check your email address.",
           code: "USER_NOT_FOUND"
         };
@@ -58,25 +58,27 @@ export const authenticateUser = action({
       if (args.password === user.password) {
         console.log('🔐 Migrating plain text password to hashed for user:', args.email);
         const hashedPassword = hashPassword(args.password);
-        await ctx.runMutation(api.users.updateUserPassword, { 
-          userId: user._id, 
-          password: hashedPassword 
+        await ctx.runMutation(api.users.updateUserPassword, {
+          userId: user._id,
+          password: hashedPassword
         });
       }
 
-      // Check if user is approved
-      if (user.status !== "approved") {
-        return { 
-          success: false, 
-          error: "Invalid email or password",
+      // Allow login for all users regardless of status
+      // The mobile app will handle redirecting pending users to waiting list
+      // Only block suspended users
+      if (user.status === "suspended") {
+        return {
+          success: false,
+          error: "Account suspended. Please contact support.",
           status: user.status,
-          code: "ACCOUNT_STATUS_ISSUE"
+          code: "ACCOUNT_SUSPENDED"
         };
       }
 
       // Return user data (without password)
       const { password, ...userData } = user;
-      
+
       // Update last login timestamp
       await ctx.runMutation(api.users.updateLastLogin, { userId: user._id });
 
@@ -130,7 +132,7 @@ export const registerUser = action({
 
       // Hash the password before storing it
       const hashedPassword: string = hashPassword(args.password);
-      
+
       // Create user with hashed password using the upsertUser mutation
       const userId: Id<"users"> = await ctx.runMutation(api.users.upsertUser, {
         userId: args.userId,

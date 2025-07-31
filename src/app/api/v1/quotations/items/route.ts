@@ -129,10 +129,48 @@ export const POST = withApiKeyAuth(
 
       const updatedLineItems = [...typedItems, newLineItem];
 
-      // Update quotation with new item
+      // Always optimize data to prevent size issues - remove large productImage data
+      const optimizedItems = updatedLineItems.map(item => ({
+        itemId: item.itemId,
+        productId: item.productId,
+        productName: item.productName.substring(0, 200), // Reasonable limit
+        description: item.description ? item.description.substring(0, 500) : undefined,
+        specifications: item.specifications ? item.specifications.substring(0, 1000) : undefined,
+        quantity: item.quantity,
+        unit: item.unit,
+        unitPrice: item.unitPrice,
+        discount: item.discount,
+        taxRate: item.taxRate,
+        lineTotal: item.lineTotal,
+        notes: item.notes ? item.notes.substring(0, 500) : undefined,
+        // Remove productImage to prevent size issues - images should be stored separately
+        productImage: undefined
+      }));
+
+      // Check final payload size
+      const payloadSize = JSON.stringify({
+        quotationId: draftQuotation._id,
+        lineItems: optimizedItems,
+        performedBy: userId,
+      }).length;
+      
+      console.log(`ADD item payload size: ${(payloadSize / 1024 / 1024).toFixed(2)} MiB`);
+      
+      if (payloadSize > 900 * 1024) { // 900KB threshold for safety
+        console.error('Payload still too large after optimization:', payloadSize);
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Quotation data too large. Please reduce the amount of text in descriptions and specifications.',
+            code: 'PAYLOAD_TOO_LARGE'
+          },
+          { status: 413 }
+        );
+      }
+
       await convex.mutation(api.quotations.updateProfessionalQuotation, {
         quotationId: draftQuotation._id,
-        lineItems: updatedLineItems,
+        lineItems: optimizedItems,
         performedBy: userId,
       });
 
