@@ -17,8 +17,8 @@ export async function POST(request: NextRequest) {
     // Validate input
     if (!email || !password) {
       return NextResponse.json(
-        {
-          success: false,
+        { 
+          success: false, 
           error: 'Email and password are required',
           code: 'MISSING_CREDENTIALS'
         },
@@ -30,8 +30,8 @@ export async function POST(request: NextRequest) {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       return NextResponse.json(
-        {
-          success: false,
+        { 
+          success: false, 
           error: 'Invalid email format',
           code: 'INVALID_EMAIL'
         },
@@ -48,15 +48,15 @@ export async function POST(request: NextRequest) {
     console.log('🔐 Convex auth result:', authResult);
 
     if (!authResult.success) {
-      const responseData = {
-        success: false,
+      const responseData = { 
+        success: false, 
         error: authResult.error || 'Authentication failed',
         code: authResult.code || (authResult.status === 'pending' ? 'PENDING_APPROVAL' : 'INVALID_CREDENTIALS'),
         status: authResult.status
       };
-
+      
       console.log('🔐 Returning error response:', responseData);
-
+      
       return NextResponse.json(
         responseData,
         { status: authResult.code === 'USER_NOT_FOUND' ? 404 : 401 }
@@ -65,9 +65,9 @@ export async function POST(request: NextRequest) {
 
     // Return user data (without sensitive information)
     const userData = authResult.user;
-
+    
     console.log('🔐 Returning user data:', userData);
-
+    
     return NextResponse.json({
       success: true,
       user: {
@@ -100,8 +100,8 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('User authentication API error:', error);
     return NextResponse.json(
-      {
-        success: false,
+      { 
+        success: false, 
         error: 'Internal server error',
         code: 'SERVER_ERROR'
       },
