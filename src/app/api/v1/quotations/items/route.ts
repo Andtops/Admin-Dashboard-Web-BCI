@@ -29,12 +29,9 @@ export const POST = withApiKeyAuth(
       }
 
       // Get current draft quotation for user
-      const quotations = await convex.query(api.quotations.getQuotationsByUserId, {
+      let draftQuotation = await convex.query(api.quotations.getCurrentDraftQuotation, {
         userId,
-        limit: 10,
       });
-
-      let draftQuotation = quotations.quotations.find(q => q.status === 'draft');
 
       // Create draft if none exists
       if (!draftQuotation) {

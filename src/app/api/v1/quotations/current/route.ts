@@ -28,13 +28,9 @@ export const GET = withApiKeyAuth(
       }
 
       // Get current draft quotation for user
-      const quotations = await convex.query(api.quotations.getQuotationsByUserId, {
+      const draftQuotation = await convex.query(api.quotations.getCurrentDraftQuotation, {
         userId,
-        limit: 1,
       });
-
-      // Find draft quotation
-      const draftQuotation = quotations.quotations.find(q => q.status === 'draft');
 
       if (!draftQuotation) {
         return NextResponse.json(
@@ -64,6 +60,7 @@ export const GET = withApiKeyAuth(
         })),
         status: 'draft' as const,
         notes: draftQuotation.additionalRequirements || '',
+        urgency: draftQuotation.urgency || 'standard',
       };
 
       return NextResponse.json({

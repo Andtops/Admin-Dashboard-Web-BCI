@@ -32,6 +32,7 @@ interface DraftQuotation {
   status: "draft";
   submittedAt?: number;
   notes?: string;
+  urgency?: "standard" | "urgent" | "asap";
 }
 
 // In-memory storage for draft quotations
@@ -159,6 +160,34 @@ export class DraftStorage {
     this.setDraft(userId, draft);
     
     return draft.items[itemIndex];
+  }
+
+  /**
+   * Update draft quotation metadata (notes, urgency, etc.)
+   */
+  static updateDraftMetadata(userId: string, updates: Partial<Pick<DraftQuotation, 'notes' | 'urgency'>>): DraftQuotation | null {
+    const draft = this.getDraft(userId);
+    
+    if (!draft) {
+      return null;
+    }
+
+    // Update draft with new metadata
+    const updatedDraft: DraftQuotation = {
+      ...draft,
+      ...updates,
+    };
+
+    this.setDraft(userId, updatedDraft);
+    
+    return updatedDraft;
+  }
+
+  /**
+   * Update urgency level for draft quotation
+   */
+  static updateUrgency(userId: string, urgency: "standard" | "urgent" | "asap"): DraftQuotation | null {
+    return this.updateDraftMetadata(userId, { urgency });
   }
 
   /**

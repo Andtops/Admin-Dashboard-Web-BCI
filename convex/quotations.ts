@@ -101,6 +101,25 @@ export const getQuotationsByUserId = query({
   },
 });
 
+// Query to get current draft quotation for a user
+export const getCurrentDraftQuotation = query({
+  args: { 
+    userId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const draftQuotations = await ctx.db
+      .query("quotations")
+      .withIndex("by_user_id", (q) => q.eq("userId", args.userId))
+      .filter((q) => q.eq(q.field("status"), "draft"))
+      .collect();
+    
+    // Sort by creation date (newest first) and return the most recent draft
+    draftQuotations.sort((a, b) => b.createdAt - a.createdAt);
+    
+    return draftQuotations.length > 0 ? draftQuotations[0] : null;
+  },
+});
+
 // Query to get all quotations (admin view)
 export const getAllQuotations = query({
   args: {
@@ -1019,6 +1038,60 @@ export const updateQuotationUrgency = mutation({
       lastModifiedBy: args.performedBy,
       auditTrail: [...(quotation.auditTrail || []), newAuditEntry],
     });
+    
+    return args.quotationId;
+  },
+});
+
+// General mutation to update quotation fields
+export const updateQuotation = mutation({
+  args: {
+    quotationId: v.id("quotations"),
+    updates: v.any(), // Flexible updates object
+    updatedBy: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+    const quotation = await ctx.db.get(args.quotationId);
+    
+    if (!quotation) {
+      throw new Error("Quotation not found");
+    }
+
+    // Prepare the update object
+    const updateData = {
+      ...args.updates,
+      updatedAt: now,
+      lastModifiedBy: args.updatedBy,
+    };
+
+    // Add to audit trail if significant changes are made
+    const significantFields = ['urgency', 'additionalRequirements', 'status'] as const;
+    const changedFields = Object.keys(args.updates).filter(key => 
+      significantFields.includes(key as any) && 
+      (quotation as any)[key] !== args.updates[key]
+    );
+
+    if (changedFields.length > 0) {
+      const newAuditEntry = {
+        action: "quotation_updated",
+        performedBy: args.updatedBy,
+        performedAt: now,
+        details: `Updated fields: ${changedFields.join(', ')}`,
+        oldValues: changedFields.reduce((acc, field) => {
+          acc[field] = (quotation as any)[field];
+          return acc;
+        }, {} as any),
+        newValues: changedFields.reduce((acc, field) => {
+          acc[field] = args.updates[field];
+          return acc;
+        }, {} as any),
+      };
+
+      updateData.auditTrail = [...(quotation.auditTrail || []), newAuditEntry];
+    }
+
+    await ctx.db.patch(args.quotationId, updateData);
     
     return args.quotationId;
   },
