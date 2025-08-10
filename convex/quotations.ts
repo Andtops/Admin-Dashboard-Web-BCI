@@ -20,7 +20,7 @@ function calculateFinancialSummary(lineItems: any[], currency: string = "INR") {
 
     // Calculate discount
     if (item.discount) {
-      const discountAmount = item.discount.type === "percentage" 
+      const discountAmount = item.discount.type === "percentage"
         ? (itemTotal * item.discount.value) / 100
         : item.discount.value;
       totalDiscount += discountAmount;
@@ -28,7 +28,7 @@ function calculateFinancialSummary(lineItems: any[], currency: string = "INR") {
 
     // Calculate tax
     if (item.taxRate) {
-      const taxableAmount = itemTotal - (item.discount ? 
+      const taxableAmount = itemTotal - (item.discount ?
         (item.discount.type === "percentage" ? (itemTotal * item.discount.value) / 100 : item.discount.value) : 0);
       totalTax += (taxableAmount * item.taxRate) / 100;
     }
@@ -51,7 +51,7 @@ function calculateFinancialSummary(lineItems: any[], currency: string = "INR") {
 
 // Query to get quotations by user ID
 export const getQuotationsByUserId = query({
-  args: { 
+  args: {
     userId: v.string(),
     limit: v.optional(v.number()),
     offset: v.optional(v.number()),
@@ -62,15 +62,15 @@ export const getQuotationsByUserId = query({
       .query("quotations")
       .withIndex("by_user_id", (q) => q.eq("userId", args.userId))
       .collect();
-    
+
     // Sort by creation date (newest first)
     quotations.sort((a, b) => b.createdAt - a.createdAt);
-    
+
     // Apply pagination
     const offset = args.offset || 0;
     const limit = args.limit || 20;
     const paginatedQuotations = quotations.slice(offset, offset + limit);
-    
+
     // Add unread message count if requested
     let quotationsWithUnread = paginatedQuotations;
     if (args.includeUnreadCount) {
@@ -84,7 +84,7 @@ export const getQuotationsByUserId = query({
               q.eq(q.field("isReadByUser"), false)
             ))
             .collect();
-          
+
           return {
             ...quotation,
             unreadMessageCount: unreadMessages.length,
@@ -92,7 +92,7 @@ export const getQuotationsByUserId = query({
         })
       );
     }
-    
+
     return {
       quotations: quotationsWithUnread,
       total: quotations.length,
@@ -103,7 +103,7 @@ export const getQuotationsByUserId = query({
 
 // Query to get current draft quotation for a user
 export const getCurrentDraftQuotation = query({
-  args: { 
+  args: {
     userId: v.string(),
   },
   handler: async (ctx, args) => {
@@ -112,10 +112,10 @@ export const getCurrentDraftQuotation = query({
       .withIndex("by_user_id", (q) => q.eq("userId", args.userId))
       .filter((q) => q.eq(q.field("status"), "draft"))
       .collect();
-    
+
     // Sort by creation date (newest first) and return the most recent draft
     draftQuotations.sort((a, b) => b.createdAt - a.createdAt);
-    
+
     return draftQuotations.length > 0 ? draftQuotations[0] : null;
   },
 });
@@ -137,7 +137,7 @@ export const getAllQuotations = query({
   },
   handler: async (ctx, args) => {
     let quotationsQuery;
-    
+
     // Filter by status if provided
     if (args.status) {
       quotationsQuery = ctx.db
@@ -146,17 +146,17 @@ export const getAllQuotations = query({
     } else {
       quotationsQuery = ctx.db.query("quotations");
     }
-    
+
     const allQuotations = await quotationsQuery.collect();
-    
+
     // Sort by creation date (newest first)
     allQuotations.sort((a, b) => b.createdAt - a.createdAt);
-    
+
     // Apply pagination
     const offset = args.offset || 0;
     const limit = args.limit || 50;
     const quotations = allQuotations.slice(offset, offset + limit);
-    
+
     return quotations;
   },
 });
@@ -170,7 +170,7 @@ export const createProfessionalQuotation = mutation({
     userName: v.string(),
     userPhone: v.optional(v.string()),
     businessName: v.optional(v.string()),
-    
+
     // Line items
     lineItems: v.array(v.object({
       productId: v.string(),
@@ -181,7 +181,7 @@ export const createProfessionalQuotation = mutation({
       unit: v.string(),
       notes: v.optional(v.string()),
     })),
-    
+
     // Addresses
     billingAddress: v.optional(v.object({
       companyName: v.optional(v.string()),
@@ -194,7 +194,7 @@ export const createProfessionalQuotation = mutation({
       phone: v.optional(v.string()),
       email: v.optional(v.string()),
     })),
-    
+
     shippingAddress: v.optional(v.object({
       companyName: v.optional(v.string()),
       contactPerson: v.string(),
@@ -206,7 +206,7 @@ export const createProfessionalQuotation = mutation({
       phone: v.optional(v.string()),
       email: v.optional(v.string()),
     })),
-    
+
     // Delivery requirements
     deliveryTerms: v.optional(v.object({
       deliveryLocation: v.optional(v.string()),
@@ -214,7 +214,7 @@ export const createProfessionalQuotation = mutation({
       shippingMethod: v.optional(v.string()),
       specialInstructions: v.optional(v.string()),
     })),
-    
+
     // Additional requirements (legacy support)
     additionalRequirements: v.optional(v.string()),
     urgency: v.optional(v.union(
@@ -226,7 +226,7 @@ export const createProfessionalQuotation = mutation({
   handler: async (ctx, args) => {
     const now = Date.now();
     const quotationNumber = generateQuotationNumber();
-    
+
     // Default vendor information (should be configurable in production)
     const vendorInfo = {
       companyName: "Benzochem Industries",
@@ -248,7 +248,7 @@ export const createProfessionalQuotation = mutation({
         panNumber: "ABCDE1234F",
       },
     };
-    
+
     // Convert line items to include itemId
     const processedLineItems = args.lineItems.map((item, index) => ({
       ...item,
@@ -257,7 +257,7 @@ export const createProfessionalQuotation = mutation({
       taxRate: 18, // Default GST rate
       lineTotal: 0,
     }));
-    
+
     const quotationId = await ctx.db.insert("quotations", {
       quotationNumber,
       version: 1,
@@ -273,12 +273,7 @@ export const createProfessionalQuotation = mutation({
       deliveryTerms: args.deliveryTerms,
       status: "pending",
       threadStatus: "active",
-      auditTrail: [{
-        action: "quotation_created",
-        performedBy: args.userId,
-        performedAt: now,
-        details: "Quotation request submitted by customer",
-      }],
+      // Audit trail removed for simplicity
       additionalRequirements: args.additionalRequirements,
       urgency: args.urgency || "standard",
       createdAt: now,
@@ -298,7 +293,7 @@ export const createProfessionalQuotation = mutation({
       relatedEntityId: quotationId,
       createdAt: now,
     });
-    
+
     return { quotationId, quotationNumber };
   },
 });
@@ -341,10 +336,10 @@ export const createQuotation = mutation({
       lineTotal: 0,
       notes: undefined,
     }));
-    
+
     const now = Date.now();
     const quotationNumber = generateQuotationNumber();
-    
+
     // Default vendor information (should be configurable in production)
     const vendorInfo = {
       companyName: "Benzochem Industries",
@@ -366,7 +361,7 @@ export const createQuotation = mutation({
         panNumber: "ABCDE1234F",
       },
     };
-    
+
     const quotationId = await ctx.db.insert("quotations", {
       quotationNumber,
       version: 1,
@@ -382,12 +377,7 @@ export const createQuotation = mutation({
       } : undefined,
       status: "pending",
       threadStatus: "active",
-      auditTrail: [{
-        action: "quotation_created",
-        performedBy: args.userId,
-        performedAt: now,
-        details: "Legacy quotation request submitted by customer",
-      }],
+      // Audit trail removed for simplicity
       additionalRequirements: args.additionalRequirements,
       urgency: args.urgency || "standard",
       createdAt: now,
@@ -407,7 +397,7 @@ export const createQuotation = mutation({
       relatedEntityId: quotationId,
       createdAt: now,
     });
-    
+
     return { quotationId, quotationNumber };
   },
 });
@@ -483,7 +473,7 @@ export const updateProfessionalQuotation = mutation({
   handler: async (ctx, args) => {
     const now = Date.now();
     const quotation = await ctx.db.get(args.quotationId);
-    
+
     if (!quotation) {
       throw new Error("Quotation not found");
     }
@@ -497,7 +487,7 @@ export const updateProfessionalQuotation = mutation({
     if (args.lineItems) {
       updateData.lineItems = args.lineItems;
       updateData.financialSummary = calculateFinancialSummary(args.lineItems);
-      
+
       // Calculate tax details
       const taxDetails: Array<{
         taxType: string;
@@ -506,13 +496,13 @@ export const updateProfessionalQuotation = mutation({
         taxAmount: number;
       }> = [];
       let totalTax = 0;
-      
+
       args.lineItems.forEach(item => {
-        const taxableAmount = item.lineTotal - (item.discount ? 
+        const taxableAmount = item.lineTotal - (item.discount ?
           (item.discount.type === "percentage" ? (item.lineTotal * item.discount.value) / 100 : item.discount.value) : 0);
         const taxAmount = (taxableAmount * item.taxRate) / 100;
         totalTax += taxAmount;
-        
+
         const existingTax = taxDetails.find(t => t.taxRate === item.taxRate);
         if (existingTax) {
           existingTax.taxableAmount += taxableAmount;
@@ -526,7 +516,7 @@ export const updateProfessionalQuotation = mutation({
           });
         }
       });
-      
+
       updateData.taxDetails = taxDetails;
     }
 
@@ -544,27 +534,10 @@ export const updateProfessionalQuotation = mutation({
       processingNotes: args.adminNotes,
     };
 
-    // Add to audit trail
-    const newAuditEntry = {
-      action: "quotation_updated",
-      performedBy: args.performedBy,
-      performedAt: now,
-      details: "Quotation updated with pricing and terms",
-      oldValues: {
-        status: quotation.status,
-        lineItems: quotation.lineItems,
-      },
-      newValues: {
-        lineItems: args.lineItems,
-        paymentTerms: args.paymentTerms,
-        deliveryTerms: args.deliveryTerms,
-      },
-    };
+    // Audit trail removed for simplicity - using simple updatedAt and lastModifiedBy tracking
 
-    updateData.auditTrail = [...(quotation.auditTrail || []), newAuditEntry];
-    
     await ctx.db.patch(args.quotationId, updateData);
-    
+
     return args.quotationId;
   },
 });
@@ -603,11 +576,11 @@ export const updateQuotationStatus = mutation({
   handler: async (ctx, args) => {
     const now = Date.now();
     const quotation = await ctx.db.get(args.quotationId);
-    
+
     if (!quotation) {
       throw new Error("Quotation not found");
     }
-    
+
     const updateData: any = {
       status: args.status,
       updatedAt: now,
@@ -625,7 +598,7 @@ export const updateQuotationStatus = mutation({
         notes: args.notes,
         gstDetails: args.gstDetails,
       };
-      
+
       // Set validity dates for quoted status
       if (args.validUntil) {
         updateData.validFrom = now;
@@ -642,24 +615,14 @@ export const updateQuotationStatus = mutation({
       };
     }
 
-    // Add to audit trail
-    const newAuditEntry = {
-      action: "status_updated",
-      performedBy: args.performedBy,
-      performedAt: now,
-      details: `Status changed from ${quotation.status} to ${args.status}`,
-      oldValues: { status: quotation.status },
-      newValues: { status: args.status },
-    };
+    // Audit trail removed for simplicity - using simple updatedAt and lastModifiedBy tracking
 
-    updateData.auditTrail = [...(quotation.auditTrail || []), newAuditEntry];
-    
     await ctx.db.patch(args.quotationId, updateData);
-    
+
     // Create notification for status update
     let notificationMessage = "";
     let notificationType: "order_notification" = "order_notification";
-    
+
     switch (args.status) {
       case "processing":
         notificationMessage = `Your quotation ${quotation.quotationNumber} is being processed.`;
@@ -700,7 +663,7 @@ export const updateQuotationStatus = mutation({
         });
       }
     }
-    
+
     return args.quotationId;
   },
 });
@@ -725,7 +688,7 @@ export const generateQuotationPDF = mutation({
   handler: async (ctx, args) => {
     const now = Date.now();
     const quotation = await ctx.db.get(args.quotationId);
-    
+
     if (!quotation) {
       throw new Error("Quotation not found");
     }
@@ -744,18 +707,10 @@ export const generateQuotationPDF = mutation({
       lastModifiedBy: args.performedBy,
     };
 
-    // Add to audit trail
-    const newAuditEntry = {
-      action: "pdf_generated",
-      performedBy: args.performedBy,
-      performedAt: now,
-      details: "PDF document generated for quotation",
-    };
+    // Audit trail removed for simplicity - using simple updatedAt and lastModifiedBy tracking
 
-    updateData.auditTrail = [...(quotation.auditTrail || []), newAuditEntry];
-    
     await ctx.db.patch(args.quotationId, updateData);
-    
+
     return { success: true, pdfUrl: updateData.documentInfo.pdfUrl };
   },
 });
@@ -770,7 +725,7 @@ export const addDigitalSignature = mutation({
   handler: async (ctx, args) => {
     const now = Date.now();
     const quotation = await ctx.db.get(args.quotationId);
-    
+
     if (!quotation) {
       throw new Error("Quotation not found");
     }
@@ -790,18 +745,10 @@ export const addDigitalSignature = mutation({
       lastModifiedBy: args.signedBy,
     };
 
-    // Add to audit trail
-    const newAuditEntry = {
-      action: "digitally_signed",
-      performedBy: args.signedBy,
-      performedAt: now,
-      details: "Quotation digitally signed",
-    };
+    // Audit trail removed for simplicity - using simple updatedAt and lastModifiedBy tracking
 
-    updateData.auditTrail = [...(quotation.auditTrail || []), newAuditEntry];
-    
     await ctx.db.patch(args.quotationId, updateData);
-    
+
     return { success: true };
   },
 });
@@ -814,7 +761,7 @@ export const getExpiringQuotations = query({
   handler: async (ctx, args) => {
     const daysAhead = args.daysAhead || 7;
     const expiryThreshold = Date.now() + (daysAhead * 24 * 60 * 60 * 1000);
-    
+
     const quotations = await ctx.db
       .query("quotations")
       .withIndex("by_valid_until")
@@ -824,7 +771,7 @@ export const getExpiringQuotations = query({
         q.gt(q.field("validUntil"), Date.now())
       ))
       .collect();
-    
+
     return quotations;
   },
 });
@@ -855,23 +802,23 @@ export const getQuotationStats = query({
       expired: allQuotations.filter(q => q.status === "expired").length,
       closed: allQuotations.filter(q => q.status === "closed").length,
       revised: allQuotations.filter(q => q.status === "revised").length,
-      
+
       // Time-based metrics
       recentRequests: allQuotations.filter(q => q.createdAt > sevenDaysAgo).length,
       monthlyRequests: allQuotations.filter(q => q.createdAt > thirtyDaysAgo).length,
-      
+
       // Financial metrics
       totalValue,
       averageValue: acceptedQuotations.length > 0 ? totalValue / acceptedQuotations.length : 0,
-      
+
       // Conversion metrics
       conversionRate: allQuotations.length > 0 ? (acceptedQuotations.length / allQuotations.length) * 100 : 0,
-      
+
       // Expiring quotations
-      expiringQuotations: allQuotations.filter(q => 
-        q.status === "quoted" && 
-        q.validUntil && 
-        q.validUntil > now && 
+      expiringQuotations: allQuotations.filter(q =>
+        q.status === "quoted" &&
+        q.validUntil &&
+        q.validUntil > now &&
         q.validUntil < now + (7 * 24 * 60 * 60 * 1000)
       ).length,
     };
@@ -892,7 +839,7 @@ export const createDraftQuotation = mutation({
   handler: async (ctx, args) => {
     const now = Date.now();
     const quotationNumber = generateQuotationNumber();
-    
+
     // Default vendor information (should be configurable in production)
     const vendorInfo = {
       companyName: "Benzochem Industries",
@@ -914,7 +861,7 @@ export const createDraftQuotation = mutation({
         panNumber: "ABCDE1234F",
       },
     };
-    
+
     const quotationId = await ctx.db.insert("quotations", {
       quotationNumber,
       version: 1,
@@ -927,19 +874,14 @@ export const createDraftQuotation = mutation({
       lineItems: [], // Empty draft
       status: "draft", // This is the key difference - creating as draft
       threadStatus: "active",
-      auditTrail: [{
-        action: "draft_quotation_created",
-        performedBy: args.userId,
-        performedAt: now,
-        details: "Draft quotation created for user cart",
-      }],
+      // Audit trail removed for simplicity
       additionalRequirements: '',
       urgency: "standard",
       createdAt: now,
       updatedAt: now,
       createdBy: args.userId,
     });
-    
+
     return { quotationId, quotationNumber };
   },
 });
@@ -954,7 +896,7 @@ export const createQuotationRevision = mutation({
   handler: async (ctx, args) => {
     const now = Date.now();
     const originalQuotation = await ctx.db.get(args.originalQuotationId);
-    
+
     if (!originalQuotation) {
       throw new Error("Original quotation not found");
     }
@@ -968,15 +910,7 @@ export const createQuotationRevision = mutation({
       status: "draft",
       validFrom: undefined,
       validUntil: undefined,
-      auditTrail: [
-        ...(originalQuotation.auditTrail || []),
-        {
-          action: "revision_created",
-          performedBy: args.performedBy,
-          performedAt: now,
-          details: `Revision ${newVersion} created from version ${originalQuotation.version || 1}`,
-        }
-      ],
+      // Audit trail removed for simplicity
       createdAt: now,
       updatedAt: now,
       lastModifiedBy: args.performedBy,
@@ -986,15 +920,7 @@ export const createQuotationRevision = mutation({
     await ctx.db.patch(args.originalQuotationId, {
       status: "revised",
       updatedAt: now,
-      auditTrail: [
-        ...(originalQuotation.auditTrail || []),
-        {
-          action: "quotation_revised",
-          performedBy: args.performedBy,
-          performedAt: now,
-          details: `New revision ${newVersion} created`,
-        }
-      ],
+      // Audit trail removed for simplicity
     });
 
     return { revisionQuotationId, version: newVersion };
@@ -1015,30 +941,21 @@ export const updateQuotationUrgency = mutation({
   handler: async (ctx, args) => {
     const now = Date.now();
     const quotation = await ctx.db.get(args.quotationId);
-    
+
     if (!quotation) {
       throw new Error("Quotation not found");
     }
 
     const oldUrgency = quotation.urgency || "standard";
-    
-    // Add to audit trail
-    const newAuditEntry = {
-      action: "urgency_updated",
-      performedBy: args.performedBy,
-      performedAt: now,
-      details: `Urgency changed from ${oldUrgency} to ${args.urgency}`,
-      oldValues: { urgency: oldUrgency },
-      newValues: { urgency: args.urgency },
-    };
+
+    // Audit trail removed for simplicity - using simple updatedAt and lastModifiedBy tracking
 
     await ctx.db.patch(args.quotationId, {
       urgency: args.urgency,
       updatedAt: now,
       lastModifiedBy: args.performedBy,
-      auditTrail: [...(quotation.auditTrail || []), newAuditEntry],
     });
-    
+
     return args.quotationId;
   },
 });
@@ -1053,7 +970,7 @@ export const updateQuotation = mutation({
   handler: async (ctx, args) => {
     const now = Date.now();
     const quotation = await ctx.db.get(args.quotationId);
-    
+
     if (!quotation) {
       throw new Error("Quotation not found");
     }
@@ -1065,34 +982,10 @@ export const updateQuotation = mutation({
       lastModifiedBy: args.updatedBy,
     };
 
-    // Add to audit trail if significant changes are made
-    const significantFields = ['urgency', 'additionalRequirements', 'status'] as const;
-    const changedFields = Object.keys(args.updates).filter(key => 
-      significantFields.includes(key as any) && 
-      (quotation as any)[key] !== args.updates[key]
-    );
-
-    if (changedFields.length > 0) {
-      const newAuditEntry = {
-        action: "quotation_updated",
-        performedBy: args.updatedBy,
-        performedAt: now,
-        details: `Updated fields: ${changedFields.join(', ')}`,
-        oldValues: changedFields.reduce((acc, field) => {
-          acc[field] = (quotation as any)[field];
-          return acc;
-        }, {} as any),
-        newValues: changedFields.reduce((acc, field) => {
-          acc[field] = args.updates[field];
-          return acc;
-        }, {} as any),
-      };
-
-      updateData.auditTrail = [...(quotation.auditTrail || []), newAuditEntry];
-    }
+    // Audit trail removed for simplicity - using simple updatedAt and lastModifiedBy tracking
 
     await ctx.db.patch(args.quotationId, updateData);
-    
+
     return args.quotationId;
   },
 });
