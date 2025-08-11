@@ -450,7 +450,7 @@ export default function APIKeysPage() {
     },
     notifications: {
       title: "Notifications",
-      description: "System notifications and alerts",
+      description: "Push notifications and system alerts",
       icon: Activity,
       permissions: [
         {
@@ -462,6 +462,36 @@ export default function APIKeysPage() {
           name: "notifications:write",
           label: "Write Notifications",
           description: "Create and send notifications"
+        },
+        {
+          name: "notifications:register",
+          label: "Register FCM Tokens",
+          description: "Register and manage Firebase Cloud Messaging tokens for push notifications"
+        },
+        {
+          name: "notifications:update",
+          label: "Update FCM Tokens",
+          description: "Update FCM token preferences and metadata"
+        },
+        {
+          name: "notifications:delete",
+          label: "Delete FCM Tokens",
+          description: "Remove FCM tokens and unregister devices"
+        },
+        {
+          name: "notifications:send",
+          label: "Send Push Notifications",
+          description: "Send push notifications to registered devices"
+        },
+        {
+          name: "notifications:campaigns",
+          label: "Manage Campaigns",
+          description: "Create and manage notification campaigns"
+        },
+        {
+          name: "notifications:analytics",
+          label: "View Analytics",
+          description: "Access notification delivery and engagement analytics"
         }
       ]
     },

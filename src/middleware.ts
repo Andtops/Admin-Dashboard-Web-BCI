@@ -50,11 +50,36 @@ export async function middleware(request: NextRequest) {
     response.headers.set('Access-Control-Allow-Origin', '*');
     response.headers.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
     response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-API-Key');
-    
+
     // For track-visitor endpoint, allow without authentication
     if (pathname === '/api/v1/analytics/track-visitor') {
       return response;
     }
+  }
+
+  // Handle CORS for notification API endpoints (for mobile app)
+  if (pathname.startsWith('/api/notifications/')) {
+    // Handle preflight requests
+    if (request.method === 'OPTIONS') {
+      return new NextResponse(null, {
+        status: 200,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-API-Key',
+          'Access-Control-Max-Age': '86400',
+        },
+      });
+    }
+
+    // Add CORS headers to actual requests but let API key auth handle authentication
+    const response = NextResponse.next();
+    response.headers.set('Access-Control-Allow-Origin', '*');
+    response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-API-Key');
+
+    // Let the API endpoints handle their own authentication via API keys
+    return response;
   }
 
   // Skip middleware for static files and Next.js internals
@@ -68,17 +93,17 @@ export async function middleware(request: NextRequest) {
   }
 
   // Check if the route is protected
-  const isProtectedRoute = PROTECTED_ROUTES.some(route => 
+  const isProtectedRoute = PROTECTED_ROUTES.some(route =>
     pathname.startsWith(route)
   );
 
   // Check if the route is public
-  const isPublicRoute = PUBLIC_ROUTES.some(route => 
+  const isPublicRoute = PUBLIC_ROUTES.some(route =>
     pathname === route || pathname.startsWith(route)
   );
 
   // Check if the route is an auth route (login/setup)
-  const isAuthRoute = AUTH_ROUTES.some(route => 
+  const isAuthRoute = AUTH_ROUTES.some(route =>
     pathname === route || pathname.startsWith(route)
   );
 
@@ -144,7 +169,7 @@ export async function middleware(request: NextRequest) {
 
   } catch (error) {
     console.error('Middleware error:', error);
-    
+
     // On error, redirect to login for protected routes
     if (isProtectedRoute) {
       const loginUrl = new URL('/login', request.url);

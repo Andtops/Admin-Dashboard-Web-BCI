@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { withApiKeyAuth } from '@/lib/apiKeyAuth';
 
-export async function POST(request: NextRequest) {
+export const POST = withApiKeyAuth(async (request: NextRequest, apiKey) => {
   try {
     const body = await request.json();
     const {
@@ -95,10 +96,10 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+}, { requiredPermission: 'notifications:register' });
 
 // PUT /api/notifications/register-token - Update token or preferences
-export async function PUT(request: NextRequest) {
+export const PUT = withApiKeyAuth(async (request: NextRequest, apiKey) => {
   try {
     const body = await request.json();
     const { token, userId, preferences, metadata } = body;
@@ -136,9 +137,9 @@ export async function PUT(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+}, { requiredPermission: 'notifications:update' });
 
-export async function DELETE(request: NextRequest) {
+export const DELETE = withApiKeyAuth(async (request: NextRequest, apiKey) => {
   try {
     const { searchParams } = new URL(request.url);
     const token = searchParams.get('token');
@@ -172,7 +173,7 @@ export async function DELETE(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+}, { requiredPermission: 'notifications:delete' });
 
 // Helper function to determine user segments
 function determineUserSegments(tokenData: any): string[] {
