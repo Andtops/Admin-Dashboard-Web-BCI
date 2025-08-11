@@ -121,6 +121,7 @@ export const getOrCreateAdmin = mutation({
     email: v.string(),
     firstName: v.optional(v.string()),
     lastName: v.optional(v.string()),
+    password: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     // First try to find existing admin
@@ -137,10 +138,11 @@ export const getOrCreateAdmin = mutation({
     const now = Date.now();
     const firstName = args.firstName || "Demo";
     const lastName = args.lastName || "Admin";
+    const password = args.password || "admin123"; // Default plain text password for demo
     
     const adminId = await ctx.db.insert("admins", {
       email: args.email,
-      password: "demo_password_hash", // This should be properly hashed in production
+      password: password, // Store plain text password (no hashing for admin accounts)
       firstName,
       lastName,
       role: "admin",
@@ -184,8 +186,31 @@ export const updateAdminRole = mutation({
   },
 });
 
-// Mutation to verify admin password (for re-authentication)
+// Mutation to verify admin password (for re-authentication) - accepts email
 export const verifyAdminPassword = mutation({
+  args: {
+    email: v.string(),
+    password: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const admin = await ctx.db
+      .query("admins")
+      .withIndex("by_email", (q) => q.eq("email", args.email))
+      .first();
+      
+    if (!admin) {
+      return { success: false, error: "Admin not found" };
+    }
+
+    // Plain text password comparison for admin accounts (no hashing)
+    const isValid = admin.password === args.password;
+    
+    return { success: isValid };
+  },
+});
+
+// Mutation to verify admin password by ID (for backward compatibility)
+export const verifyAdminPasswordById = mutation({
   args: {
     adminId: v.id("admins"),
     password: v.string(),
@@ -196,8 +221,7 @@ export const verifyAdminPassword = mutation({
       return { success: false, error: "Admin not found" };
     }
 
-    // In a real implementation, you would hash the password and compare
-    // For now, we'll do a simple comparison (this should be improved)
+    // Plain text password comparison for admin accounts (no hashing)
     const isValid = admin.password === args.password;
     
     return { success: isValid };

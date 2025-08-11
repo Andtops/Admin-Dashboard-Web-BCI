@@ -14,7 +14,7 @@ export default defineSchema({
     businessName: v.optional(v.string()),
     gstNumber: v.optional(v.string()),
     isGstVerified: v.optional(v.boolean()),
-    
+
     // Admin-specific fields
     status: v.union(
       v.literal("pending"),
@@ -27,19 +27,19 @@ export default defineSchema({
       v.literal("admin"),
       v.literal("super_admin")
     ),
-    
+
     // Approval workflow
     approvedBy: v.optional(v.id("admins")),
     approvedAt: v.optional(v.number()),
     rejectedBy: v.optional(v.id("admins")),
     rejectedAt: v.optional(v.number()),
     rejectionReason: v.optional(v.string()),
-    
+
     // Metadata
     createdAt: v.number(),
     updatedAt: v.number(),
     lastLoginAt: v.optional(v.number()),
-    
+
     // Additional business info
     legalNameOfBusiness: v.optional(v.string()),
     tradeName: v.optional(v.string()),
@@ -49,7 +49,7 @@ export default defineSchema({
     gstStatus: v.optional(v.string()),
     principalPlaceOfBusiness: v.optional(v.string()),
     natureOfCoreBusinessActivity: v.optional(v.string()),
-    
+
     // Marketing preferences
     agreedToEmailMarketing: v.optional(v.boolean()),
     agreedToSmsMarketing: v.optional(v.boolean()),
@@ -129,7 +129,7 @@ export default defineSchema({
       url: v.string(),
       altText: v.optional(v.string()),
     })),
-    
+
     // Pricing
     priceRange: v.object({
       minVariantPrice: v.object({
@@ -141,7 +141,7 @@ export default defineSchema({
         currencyCode: v.string(),
       }),
     }),
-    
+
     // Chemical-specific metafields
     purity: v.optional(v.string()),
     packaging: v.optional(v.string()),
@@ -156,7 +156,7 @@ export default defineSchema({
     features: v.optional(v.array(v.string())),
     applications: v.optional(v.array(v.string())),
     applicationDetails: v.optional(v.array(v.string())),
-    
+
     // Admin fields
     status: v.union(
       v.literal("active"),
@@ -167,7 +167,7 @@ export default defineSchema({
     featured: v.boolean(),
     totalInventory: v.optional(v.number()),
     quantity: v.optional(v.number()), // Available quantity for sale
-    
+
     // Metadata
     createdAt: v.number(),
     updatedAt: v.number(),
@@ -194,7 +194,7 @@ export default defineSchema({
     ),
     title: v.string(),
     message: v.string(),
-    
+
     // Recipients
     recipientType: v.union(
       v.literal("admin"),
@@ -203,12 +203,12 @@ export default defineSchema({
       v.literal("specific_user")
     ),
     recipientId: v.optional(v.union(v.id("admins"), v.id("users"))),
-    
+
     // Status
     isRead: v.boolean(),
     readAt: v.optional(v.number()),
     readBy: v.optional(v.union(v.id("admins"), v.id("users"))),
-    
+
     // Priority
     priority: v.union(
       v.literal("low"),
@@ -216,7 +216,7 @@ export default defineSchema({
       v.literal("high"),
       v.literal("urgent")
     ),
-    
+
     // Related data
     relatedEntityType: v.optional(v.union(
       v.literal("user"),
@@ -224,7 +224,7 @@ export default defineSchema({
       v.literal("order")
     )),
     relatedEntityId: v.optional(v.string()),
-    
+
     // Metadata
     createdAt: v.number(),
     expiresAt: v.optional(v.number()),
@@ -334,14 +334,14 @@ export default defineSchema({
     // Quotation identification (temporarily optional for migration)
     quotationNumber: v.optional(v.string()), // Professional quotation number (e.g., QT-2024-001)
     version: v.optional(v.number()), // Version control for quotation revisions
-    
+
     // Customer Information
     userId: v.string(),
     userEmail: v.string(),
     userName: v.string(),
     userPhone: v.optional(v.string()),
     businessName: v.optional(v.string()),
-    
+
     // Company Information - Vendor/Supplier details (temporarily optional for migration)
     vendorInfo: v.optional(v.object({
       companyName: v.string(),
@@ -364,7 +364,7 @@ export default defineSchema({
         panNumber: v.optional(v.string()),
       }),
     })),
-    
+
     // Customer billing and shipping addresses
     billingAddress: v.optional(v.object({
       companyName: v.optional(v.string()),
@@ -377,7 +377,7 @@ export default defineSchema({
       phone: v.optional(v.string()),
       email: v.optional(v.string()),
     })),
-    
+
     shippingAddress: v.optional(v.object({
       companyName: v.optional(v.string()),
       contactPerson: v.string(),
@@ -389,7 +389,7 @@ export default defineSchema({
       phone: v.optional(v.string()),
       email: v.optional(v.string()),
     })),
-    
+
     // Line items with detailed pricing (temporarily optional for migration)
     lineItems: v.optional(v.array(v.object({
       itemId: v.string(),
@@ -409,7 +409,7 @@ export default defineSchema({
       notes: v.optional(v.string()),
       productImage: v.optional(v.string()), // Product image URL
     }))),
-    
+
     // Financial calculations
     financialSummary: v.optional(v.object({
       subtotal: v.number(),
@@ -421,7 +421,7 @@ export default defineSchema({
       grandTotal: v.number(),
       currency: v.string(), // ISO currency code (e.g., "INR", "USD")
     })),
-    
+
     // Tax calculations (GST, VAT)
     taxDetails: v.optional(v.array(v.object({
       taxType: v.string(), // "GST", "VAT", "IGST", "CGST", "SGST"
@@ -429,7 +429,7 @@ export default defineSchema({
       taxableAmount: v.number(),
       taxAmount: v.number(),
     }))),
-    
+
     // Payment terms
     paymentTerms: v.optional(v.object({
       paymentMethod: v.optional(v.string()),
@@ -446,7 +446,7 @@ export default defineSchema({
         accountHolderName: v.string(),
       })),
     })),
-    
+
     // Delivery and operational details
     deliveryTerms: v.optional(v.object({
       incoterms: v.optional(v.string()), // "FOB", "CIF", "EXW", etc.
@@ -456,7 +456,7 @@ export default defineSchema({
       packagingType: v.optional(v.string()),
       specialInstructions: v.optional(v.string()),
     })),
-    
+
     // Quality and compliance
     qualityStandards: v.optional(v.object({
       certifications: v.optional(v.array(v.string())),
@@ -464,14 +464,14 @@ export default defineSchema({
       testingRequirements: v.optional(v.string()),
       complianceNotes: v.optional(v.string()),
     })),
-    
+
     // Warranty information
     warrantyInfo: v.optional(v.object({
       warrantyPeriod: v.optional(v.string()),
       warrantyTerms: v.optional(v.string()),
       replacementPolicy: v.optional(v.string()),
     })),
-    
+
     // Terms and conditions
     termsAndConditions: v.optional(v.object({
       generalTerms: v.optional(v.string()),
@@ -479,7 +479,7 @@ export default defineSchema({
       cancellationPolicy: v.optional(v.string()),
       disputeResolution: v.optional(v.string()),
     })),
-    
+
     // Status tracking
     status: v.union(
       v.literal("draft"),
@@ -492,11 +492,11 @@ export default defineSchema({
       v.literal("closed"),
       v.literal("revised")
     ),
-    
+
     // Validity and expiration
     validFrom: v.optional(v.number()),
     validUntil: v.optional(v.number()),
-    
+
     // Thread management
     threadStatus: v.union(
       v.literal("active"),
@@ -513,7 +513,7 @@ export default defineSchema({
     closedBy: v.optional(v.string()),
     closedAt: v.optional(v.number()),
     closureReason: v.optional(v.string()),
-    
+
     // Admin response and processing
     adminResponse: v.optional(v.object({
       quotedBy: v.string(),
@@ -535,7 +535,7 @@ export default defineSchema({
         totalTax: v.number(),
       })),
     })),
-    
+
     // Document management
     documentInfo: v.optional(v.object({
       pdfGenerated: v.boolean(),
@@ -553,7 +553,7 @@ export default defineSchema({
         uploadedAt: v.number(),
       }))),
     })),
-    
+
     // Audit trail
     auditTrail: v.optional(v.array(v.object({
       action: v.string(),
@@ -563,7 +563,7 @@ export default defineSchema({
       oldValues: v.optional(v.any()),
       newValues: v.optional(v.any()),
     }))),
-    
+
     // Additional requirements (legacy support)
     additionalRequirements: v.optional(v.string()),
     urgency: v.optional(v.union(
@@ -571,7 +571,7 @@ export default defineSchema({
       v.literal("urgent"),
       v.literal("asap")
     )),
-    
+
     // Legacy products field (temporary for migration)
     products: v.optional(v.array(v.object({
       productId: v.string(),
@@ -580,7 +580,7 @@ export default defineSchema({
       unit: v.string(),
       specifications: v.optional(v.string()),
     }))),
-    
+
     // Metadata
     createdAt: v.number(),
     updatedAt: v.number(),
@@ -630,7 +630,7 @@ export default defineSchema({
     authorName: v.string(),
     authorRole: v.union(v.literal("user"), v.literal("admin")),
     content: v.string(),
-    
+
     // Message metadata
     messageType: v.union(
       v.literal("message"),
@@ -640,20 +640,20 @@ export default defineSchema({
       v.literal("closure_permission_rejected"),
       v.literal("thread_closed")
     ),
-    
+
     // Read status tracking
     isReadByUser: v.optional(v.boolean()),
     isReadByAdmin: v.optional(v.boolean()),
     readByUserAt: v.optional(v.number()),
     readByAdminAt: v.optional(v.number()),
-    
+
     // Message status
     isEdited: v.optional(v.boolean()),
     editedAt: v.optional(v.number()),
     isDeleted: v.optional(v.boolean()),
     deletedAt: v.optional(v.number()),
     deletedBy: v.optional(v.string()),
-    
+
     // Timestamps
     createdAt: v.number(),
     updatedAt: v.number(),
@@ -743,27 +743,27 @@ export default defineSchema({
     .index("by_country", ["country"])
     .index("by_ip_address", ["ipAddress"]),
 
-  
+
   // Product reviews table with star rating system
   productReviews: defineTable({
     // Review identification
     reviewId: v.string(), // Unique review identifier
-    
+
     // Product and user association
     productId: v.string(), // Product being reviewed
     userId: v.string(), // User who wrote the review
     userEmail: v.string(),
     userName: v.string(),
-    
+
     // Review content
     rating: v.number(), // Star rating (1-5)
     title: v.string(), // Review title/summary
     content: v.string(), // Detailed review content
-    
+
     // Review metadata
     isVerifiedPurchase: v.optional(v.boolean()), // Whether user purchased the product
     orderReference: v.optional(v.string()), // Reference to order if verified purchase
-    
+
     // Moderation and status
     status: v.union(
       v.literal("pending"), // Awaiting moderation
@@ -772,22 +772,22 @@ export default defineSchema({
       v.literal("flagged"), // Flagged for review
       v.literal("hidden") // Hidden by admin
     ),
-    
+
     // Moderation details
     moderatedBy: v.optional(v.id("admins")),
     moderatedAt: v.optional(v.number()),
     moderationReason: v.optional(v.string()),
     moderationNotes: v.optional(v.string()),
-    
+
     // Review helpfulness
     helpfulVotes: v.optional(v.number()), // Number of helpful votes
     unhelpfulVotes: v.optional(v.number()), // Number of unhelpful votes
     totalVotes: v.optional(v.number()), // Total votes received
-    
+
     // Review quality indicators
     isHighlighted: v.optional(v.boolean()), // Featured/highlighted review
     qualityScore: v.optional(v.number()), // Calculated quality score (0-100)
-    
+
     // Response from business
     adminResponse: v.optional(v.object({
       content: v.string(),
@@ -795,7 +795,7 @@ export default defineSchema({
       respondedAt: v.number(),
       isPublic: v.boolean(), // Whether response is visible to public
     })),
-    
+
     // Review updates
     isEdited: v.optional(v.boolean()),
     editedAt: v.optional(v.number()),
@@ -805,16 +805,16 @@ export default defineSchema({
       editedAt: v.number(),
       editReason: v.optional(v.string()),
     }))),
-    
+
     // Spam and abuse detection
     isSpam: v.optional(v.boolean()),
     spamScore: v.optional(v.number()), // Calculated spam probability (0-100)
     reportedCount: v.optional(v.number()), // Number of times reported
-    
+
     // SEO and display
     isVisible: v.boolean(), // Whether review is visible on frontend
     displayOrder: v.optional(v.number()), // Custom display ordering
-    
+
     // Metadata
     createdAt: v.number(),
     updatedAt: v.number(),
@@ -844,7 +844,7 @@ export default defineSchema({
       v.literal("helpful"),
       v.literal("unhelpful")
     ),
-    
+
     // Metadata
     createdAt: v.number(),
     ipAddress: v.optional(v.string()),
@@ -860,7 +860,7 @@ export default defineSchema({
     reviewId: v.id("productReviews"),
     reportedBy: v.string(), // User who reported
     reporterEmail: v.string(),
-    
+
     // Report details
     reason: v.union(
       v.literal("spam"),
@@ -872,7 +872,7 @@ export default defineSchema({
       v.literal("other")
     ),
     description: v.optional(v.string()), // Additional details
-    
+
     // Report status
     status: v.union(
       v.literal("pending"), // Awaiting review
@@ -880,7 +880,7 @@ export default defineSchema({
       v.literal("resolved"), // Action taken
       v.literal("dismissed") // No action needed
     ),
-    
+
     // Resolution
     resolvedBy: v.optional(v.id("admins")),
     resolvedAt: v.optional(v.number()),
@@ -892,7 +892,7 @@ export default defineSchema({
       v.literal("false_report")
     )),
     resolutionNotes: v.optional(v.string()),
-    
+
     // Metadata
     createdAt: v.number(),
     updatedAt: v.number(),
@@ -932,7 +932,7 @@ export default defineSchema({
     target: v.string(), // 'single', 'multiple', 'all_users'
     title: v.string(),
     body: v.string(),
-    data: v.object({}), // Additional data sent with notification
+    data: v.any(), // Additional data sent with notification
     result: v.object({
       success: v.boolean(),
       message: v.string(),

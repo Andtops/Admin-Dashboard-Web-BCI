@@ -1,4 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { sendUserPushNotification } from '@/lib/firebase-admin';
+import { ConvexHttpClient } from 'convex/browser';
+import { api } from '../../../../../convex/_generated/api';
+
+const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
 export async function POST(request: NextRequest) {
   try {
@@ -12,46 +17,71 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Mock Firebase Admin SDK call
     console.log('🧪 TEST NOTIFICATION SEND');
     console.log('Token:', token);
     console.log('Title:', title || 'Test Notification');
-    console.log('Body:', messageBody || 'This is a test notification from BenzoChem Industries');
+    console.log('Body:', messageBody || 'This is a test notification from BenzoChem Industries Admin Dashboard');
     console.log('Data:', data || {});
 
-    // Simulate successful send
-    const mockResponse = {
-      success: true,
-      messageId: `test_${Date.now()}`,
-      results: [{
-        messageId: `test_${Date.now()}`,
-        success: true
-      }],
-      successCount: 1,
-      failureCount: 0
-    };
-
-    // In a real implementation, you would use Firebase Admin SDK:
-    /*
-    const admin = require('firebase-admin');
-    
-    const message = {
-      notification: {
-        title: title || 'Test Notification',
-        body: messageBody || 'This is a test notification from BenzoChem Industries'
-      },
+    // Send actual Firebase notification with enhanced configuration
+    const notificationData = {
+      token,
+      title: title || 'Test Notification',
+      body: messageBody || 'This is a test notification from BenzoChem Industries Admin Dashboard',
       data: data || {
         category: 'test',
         actionUrl: 'benzochem://notifications',
-        customData: JSON.stringify({ test: true })
+        customData: JSON.stringify({ 
+          test: true, 
+          timestamp: new Date().toISOString() 
+        })
       },
-      token: token
+      clickAction: 'benzochem://notifications'
     };
 
-    const response = await admin.messaging().send(message);
-    */
+    const response = await sendUserPushNotification(notificationData);
 
-    return NextResponse.json(mockResponse);
+    // Log notification to Convex database
+    const logId = await convex.mutation(api.notifications.logPushNotification, {
+      target: 'single',
+      title: notificationData.title,
+      body: notificationData.body,
+      data: notificationData.data,
+      result: {
+        success: response.success,
+        message: response.success ? 'Test notification sent successfully' : (response.error || 'Failed to send notification'),
+        successCount: response.success ? 1 : 0,
+        failureCount: response.success ? 0 : 1,
+      },
+      sentAt: Date.now(),
+    });
+
+    if (response.success) {
+      console.log('✅ Notification sent successfully and logged to Convex:', {
+        messageId: response.messageId,
+        logId
+      });
+      return NextResponse.json({
+        success: true,
+        messageId: response.messageId,
+        logId,
+        message: 'Test notification sent successfully',
+        timestamp: new Date().toISOString()
+      });
+    } else {
+      console.error('❌ Failed to send notification but logged to Convex:', {
+        error: response.error,
+        logId
+      });
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: response.error || 'Failed to send notification',
+          logId
+        },
+        { status: 500 }
+      );
+    }
   } catch (error) {
     console.error('Error sending test notification:', error);
     return NextResponse.json(

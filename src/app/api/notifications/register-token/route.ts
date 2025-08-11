@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withApiKeyAuth } from '@/lib/apiKeyAuth';
+import { ConvexHttpClient } from 'convex/browser';
+import { api } from '../../../../../convex/_generated/api';
+
+const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
 export const POST = withApiKeyAuth(async (request: NextRequest, apiKey) => {
   try {
@@ -68,17 +72,42 @@ export const POST = withApiKeyAuth(async (request: NextRequest, apiKey) => {
       }
     };
 
-    // Store enhanced FCM token data
-    console.log('Enhanced FCM token registered:', tokenData);
+    // Save FCM token to Convex database
+    const mutationArgs: any = {
+      token,
+      platform,
+      deviceInfo: {
+        platform: platform,
+        version: deviceInfo?.version || osVersion || null,
+        model: deviceInfo?.model || null,
+        appVersion: appVersion || null,
+      },
+      registeredAt: Date.now(),
+    };
+
+    // Only include userId if it's provided
+    if (userId) {
+      mutationArgs.userId = userId;
+    }
+
+    const tokenId = await convex.mutation(api.notifications.registerFCMToken, mutationArgs);
 
     // Determine user segments
     const segments = determineUserSegments(tokenData);
+
+    console.log('✅ FCM token registered in Convex:', {
+      tokenId,
+      token: token.substring(0, 20) + '...',
+      platform,
+      userId: tokenData.userId,
+      segments
+    });
 
     return NextResponse.json({
       success: true,
       message: 'FCM token registered successfully',
       data: {
-        tokenId: `token_${Date.now()}`,
+        tokenId,
         userId: tokenData.userId,
         platform: tokenData.platform,
         preferences: tokenData.preferences,
@@ -152,8 +181,12 @@ export const DELETE = withApiKeyAuth(async (request: NextRequest, apiKey) => {
       );
     }
 
-    // Remove FCM token with enhanced logging
-    console.log('FCM token unregistered:', {
+    // Remove FCM token from Convex database
+    if (token) {
+      await convex.mutation(api.notifications.unregisterFCMToken, { token });
+    }
+
+    console.log('✅ FCM token unregistered from Convex:', {
       token,
       userId,
       unregisteredAt: new Date().toISOString(),

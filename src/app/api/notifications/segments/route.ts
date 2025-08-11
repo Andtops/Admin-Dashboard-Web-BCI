@@ -1,5 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { UserSegment } from '../users/route';
+
+interface UserSegment {
+  id: string;
+  name: string;
+  description: string;
+  criteria: any;
+  userCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
 
 // GET /api/notifications/segments - List user segments
 export async function GET(request: NextRequest) {

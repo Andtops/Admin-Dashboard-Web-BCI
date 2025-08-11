@@ -249,6 +249,7 @@ export function PushNotificationDashboard({
                         <SelectItem value="new_users">New Users</SelectItem>
                         <SelectItem value="premium_users">Premium Users</SelectItem>
                         <SelectItem value="inactive_users">Inactive Users</SelectItem>
+                        <SelectItem value="individual_users">Individual Users</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>

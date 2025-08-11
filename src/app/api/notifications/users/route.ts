@@ -1,300 +1,215 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { ConvexHttpClient } from 'convex/browser';
+import { api } from '../../../../../convex/_generated/api';
 
-export interface NotificationUser {
-  id: string;
-  userId: string;
-  tokens: Array<{
-    token: string;
-    platform: 'ios' | 'android';
-    deviceId: string;
-    appVersion: string;
-    osVersion: string;
-    isActive: boolean;
-    lastSeen: string;
-    registeredAt: string;
-  }>;
-  preferences: {
-    categories: {
-      [category: string]: {
-        enabled: boolean;
-        sound: string;
-        vibration: boolean;
-        priority: 'high' | 'normal' | 'low';
-      };
-    };
-    quietHours: {
-      enabled: boolean;
-      start: string;
-      end: string;
-      timezone: string;
-    };
-    doNotDisturb: boolean;
-    globallyEnabled: boolean;
-  };
-  segments: string[];
-  metadata: {
-    lastActiveAt: string;
-    registrationDate: string;
-    totalOrders: number;
-    isPremium: boolean;
-    location?: {
-      country: string;
-      region: string;
-      city: string;
-    };
-    engagement: {
-      totalNotificationsReceived: number;
-      totalOpened: number;
-      totalClicked: number;
-      openRate: number;
-      clickRate: number;
-      lastEngagement: string;
-    };
-  };
-}
+const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
-export interface UserSegment {
-  id: string;
-  name: string;
-  description: string;
-  criteria: {
-    platform?: 'ios' | 'android';
-    lastActiveAfter?: string;
-    registeredAfter?: string;
-    hasOrders?: boolean;
-    isPremium?: boolean;
-    location?: {
-      countries?: string[];
-      regions?: string[];
-      cities?: string[];
-    };
-    engagement?: {
-      minOpenRate?: number;
-      minClickRate?: number;
-      lastEngagementAfter?: string;
-    };
-    customAttributes?: Record<string, any>;
-  };
-  userCount: number;
-  createdAt: string;
-  updatedAt: string;
-}
-
-// GET /api/notifications/users - List notification users
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '20');
-    const platform = searchParams.get('platform');
-    const segment = searchParams.get('segment');
     const search = searchParams.get('search');
-    const activeOnly = searchParams.get('activeOnly') === 'true';
+    const platform = searchParams.get('platform');
+    const limit = parseInt(searchParams.get('limit') || '50');
+    const offset = parseInt(searchParams.get('offset') || '0');
 
-    // Mock users data - in real implementation, query from database
-    const mockUsers: NotificationUser[] = [
-      {
-        id: '1',
-        userId: 'user_123',
-        tokens: [
-          {
-            token: 'dGqvvGViT_6hAjr9qB8iGG:APA91bF5EHsh1k0vHzdHcS7Y-IUveTwXXRtqahYAmxO9OqaYZWa87JFt4XSDNkAhYjb-E1h1eAGROUpvt-110eQIZenuwRWjullZ0tQNa7nBCukE85C9xYA',
-            platform: 'android',
-            deviceId: 'device_123',
-            appVersion: '1.0.0',
-            osVersion: '13.0',
-            isActive: true,
-            lastSeen: new Date().toISOString(),
-            registeredAt: new Date(Date.now() - 86400000).toISOString()
-          }
-        ],
+    // Get all active FCM tokens
+    const fcmTokens = await convex.query(api.notifications.getAllActiveFCMTokens);
+    
+    // Get all users
+    const users = await convex.query(api.users.getUsers, {
+      limit: 1000, // Get more users to match with tokens
+      offset: 0
+    });
+
+    // Create a map of users by ID for quick lookup
+    const userMap = new Map();
+    users.forEach((user: any) => {
+      userMap.set(user._id, user);
+    });
+
+    // Group tokens by user and create notification users
+    const notificationUsers: any[] = [];
+    const tokensByUser = new Map();
+
+    fcmTokens.forEach((token: any) => {
+      if (!token.userId) return; // Skip tokens without user association
+      
+      if (!tokensByUser.has(token.userId)) {
+        tokensByUser.set(token.userId, []);
+      }
+      tokensByUser.get(token.userId).push(token);
+    });
+
+    // Create notification user objects
+    tokensByUser.forEach((tokens, userId) => {
+      const user = userMap.get(userId);
+      if (!user) return;
+
+      const notificationUser = {
+        id: userId,
+        userId: userId,
+        email: user.email,
+        name: `${user.firstName} ${user.lastName}`,
+        businessName: user.businessName,
+        tokens: tokens.map((token: any) => ({
+          token: token.token,
+          platform: token.platform,
+          deviceId: token.token.substring(0, 20) + '...',
+          appVersion: token.deviceInfo?.appVersion || '1.0.0',
+          osVersion: token.deviceInfo?.version || 'unknown',
+          isActive: token.isActive,
+          lastSeen: new Date(token.lastUpdated).toISOString(),
+          registeredAt: new Date(token.registeredAt).toISOString(),
+        })),
         preferences: {
           categories: {
-            order: {
-              enabled: true,
-              sound: 'order_notification.mp3',
-              vibration: true,
-              priority: 'high'
-            },
-            promotion: {
-              enabled: false,
-              sound: 'promotion_notification.mp3',
-              vibration: true,
-              priority: 'normal'
-            },
-            system: {
-              enabled: true,
-              sound: 'system_alert.mp3',
-              vibration: true,
-              priority: 'high'
-            }
+            order: { enabled: true, sound: 'default', vibration: true, priority: 'high' },
+            promotion: { enabled: true, sound: 'default', vibration: true, priority: 'normal' },
+            system: { enabled: true, sound: 'default', vibration: true, priority: 'high' },
+            general: { enabled: true, sound: 'default', vibration: true, priority: 'normal' }
           },
-          quietHours: {
-            enabled: true,
-            start: '22:00',
-            end: '08:00',
-            timezone: 'America/New_York'
-          },
+          quietHours: { enabled: false, start: '22:00', end: '08:00', timezone: 'UTC' },
           doNotDisturb: false,
           globallyEnabled: true
         },
-        segments: ['active_users', 'premium_users'],
+        segments: ['all_users', `${tokens[0]?.platform}_users`],
         metadata: {
-          lastActiveAt: new Date().toISOString(),
-          registrationDate: new Date(Date.now() - 2592000000).toISOString(),
-          totalOrders: 15,
-          isPremium: true,
+          lastActiveAt: new Date(Math.max(...tokens.map((t: any) => t.lastUpdated))).toISOString(),
+          registrationDate: user.createdAt ? new Date(user.createdAt).toISOString() : new Date().toISOString(),
+          totalOrders: 0,
+          isPremium: false,
           location: {
-            country: 'US',
-            region: 'NY',
-            city: 'New York'
+            country: 'India',
+            region: 'Unknown',
+            city: 'Unknown'
           },
           engagement: {
-            totalNotificationsReceived: 45,
-            totalOpened: 23,
-            totalClicked: 8,
-            openRate: 51.1,
-            clickRate: 34.8,
-            lastEngagement: new Date(Date.now() - 3600000).toISOString()
+            totalNotificationsReceived: 0,
+            totalOpened: 0,
+            totalClicked: 0,
+            openRate: 0,
+            clickRate: 0,
+            lastEngagement: new Date().toISOString()
           }
         }
-      }
-    ];
+      };
+
+      notificationUsers.push(notificationUser);
+    });
 
     // Apply filters
-    let filteredUsers = mockUsers;
-    
-    if (platform) {
-      filteredUsers = filteredUsers.filter(user => 
-        user.tokens.some(token => token.platform === platform)
-      );
-    }
-    
-    if (segment) {
-      filteredUsers = filteredUsers.filter(user => 
-        user.segments.includes(segment)
-      );
-    }
-    
-    if (activeOnly) {
-      filteredUsers = filteredUsers.filter(user => 
-        user.tokens.some(token => token.isActive)
-      );
-    }
-    
+    let filteredUsers = notificationUsers;
+
     if (search) {
-      filteredUsers = filteredUsers.filter(user => 
-        user.userId.toLowerCase().includes(search.toLowerCase()) ||
-        user.id.toLowerCase().includes(search.toLowerCase())
+      filteredUsers = filteredUsers.filter(user =>
+        user.name.toLowerCase().includes(search.toLowerCase()) ||
+        user.email.toLowerCase().includes(search.toLowerCase()) ||
+        (user.businessName && user.businessName.toLowerCase().includes(search.toLowerCase()))
       );
     }
 
-    // Pagination
-    const startIndex = (page - 1) * limit;
-    const endIndex = startIndex + limit;
-    const paginatedUsers = filteredUsers.slice(startIndex, endIndex);
+    if (platform) {
+      filteredUsers = filteredUsers.filter(user =>
+        user.tokens.some((token: any) => token.platform === platform)
+      );
+    }
+
+    // Apply pagination
+    const paginatedUsers = filteredUsers.slice(offset, offset + limit);
 
     return NextResponse.json({
       success: true,
       data: {
         users: paginatedUsers,
-        pagination: {
-          page,
-          limit,
-          total: filteredUsers.length,
-          totalPages: Math.ceil(filteredUsers.length / limit)
-        },
-        summary: {
-          totalUsers: mockUsers.length,
-          activeUsers: mockUsers.filter(u => u.tokens.some(t => t.isActive)).length,
-          iosUsers: mockUsers.filter(u => u.tokens.some(t => t.platform === 'ios')).length,
-          androidUsers: mockUsers.filter(u => u.tokens.some(t => t.platform === 'android')).length
-        }
+        total: filteredUsers.length,
+        limit,
+        offset,
+        hasMore: offset + limit < filteredUsers.length
       }
     });
   } catch (error) {
-    console.error('Error fetching users:', error);
+    console.error('Error fetching notification users:', error);
     return NextResponse.json(
-      { 
-        success: false, 
-        error: error instanceof Error ? error.message : 'Failed to fetch users' 
+      {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to fetch notification users'
       },
       { status: 500 }
     );
   }
 }
 
-// POST /api/notifications/users - Create or update user
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { userId, token, platform, deviceId, appVersion, osVersion, preferences, metadata } = body;
+    const { userIds, title, body: messageBody, data, imageUrl, clickAction, category = 'general' } = body;
 
-    if (!userId || !token || !platform) {
+    if (!userIds || userIds.length === 0) {
       return NextResponse.json(
-        { success: false, error: 'userId, token, and platform are required' },
+        { success: false, error: 'User IDs are required' },
         { status: 400 }
       );
     }
 
-    // In a real implementation, create or update user in database
-    const user: NotificationUser = {
-      id: `notification_user_${Date.now()}`,
-      userId,
-      tokens: [
-        {
-          token,
-          platform,
-          deviceId: deviceId || `device_${Date.now()}`,
-          appVersion: appVersion || '1.0.0',
-          osVersion: osVersion || 'unknown',
-          isActive: true,
-          lastSeen: new Date().toISOString(),
-          registeredAt: new Date().toISOString()
-        }
-      ],
-      preferences: preferences || {
-        categories: {
-          order: { enabled: true, sound: 'order_notification.mp3', vibration: true, priority: 'high' },
-          promotion: { enabled: true, sound: 'promotion_notification.mp3', vibration: true, priority: 'normal' },
-          system: { enabled: true, sound: 'system_alert.mp3', vibration: true, priority: 'high' },
-          general: { enabled: true, sound: 'default_notification.mp3', vibration: true, priority: 'normal' }
-        },
-        quietHours: { enabled: false, start: '22:00', end: '08:00', timezone: 'UTC' },
-        doNotDisturb: false,
-        globallyEnabled: true
-      },
-      segments: ['new_users'],
-      metadata: {
-        lastActiveAt: new Date().toISOString(),
-        registrationDate: new Date().toISOString(),
-        totalOrders: 0,
-        isPremium: false,
-        engagement: {
-          totalNotificationsReceived: 0,
-          totalOpened: 0,
-          totalClicked: 0,
-          openRate: 0,
-          clickRate: 0,
-          lastEngagement: new Date().toISOString()
-        },
-        ...metadata
-      }
-    };
+    if (!title || !messageBody) {
+      return NextResponse.json(
+        { success: false, error: 'Title and body are required' },
+        { status: 400 }
+      );
+    }
 
-    console.log('User created/updated:', user);
+    // Get FCM tokens for the specified users
+    const fcmTokens = await convex.query(api.notifications.getFCMTokensForUsers, {
+      userIds
+    });
+
+    if (fcmTokens.length === 0) {
+      return NextResponse.json(
+        { success: false, error: 'No active FCM tokens found for the specified users' },
+        { status: 400 }
+      );
+    }
+
+    // Extract just the token strings
+    const tokens = fcmTokens.map((tokenRecord: any) => tokenRecord.token);
+
+    // Send notifications using the existing send-push endpoint logic
+    const response = await fetch(`${request.nextUrl.origin}/api/notifications/send-push`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        tokens,
+        title,
+        body: messageBody,
+        data: {
+          category,
+          ...data
+        },
+        imageUrl,
+        clickAction
+      })
+    });
+
+    const result = await response.json();
 
     return NextResponse.json({
-      success: true,
-      data: user,
-      message: 'User registered successfully'
+      success: result.success,
+      message: `Notification sent to ${userIds.length} users (${tokens.length} devices)`,
+      data: {
+        userCount: userIds.length,
+        deviceCount: tokens.length,
+        result: result.result,
+        logId: result.logId
+      }
     });
   } catch (error) {
-    console.error('Error creating/updating user:', error);
+    console.error('Error sending notification to users:', error);
     return NextResponse.json(
-      { 
-        success: false, 
-        error: error instanceof Error ? error.message : 'Failed to create/update user' 
+      {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to send notification to users'
       },
       { status: 500 }
     );

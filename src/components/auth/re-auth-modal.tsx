@@ -114,10 +114,15 @@ export function ReAuthModal({
 
     setIsLoading(true);
     try {
-      await verifyPassword({
+      const result = await verifyPassword({
+        email: admin.email,
         password: password.trim(),
-        adminId: admin.email as any,
       });
+
+      if (!result.success) {
+        toast.error(result.error || 'Invalid password');
+        return;
+      }
 
             toast.success('Password authentication successful');
       onSuccess();

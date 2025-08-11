@@ -87,18 +87,53 @@ export async function sendUserPushNotification({
       },
       data: data || {},
       android: {
+        priority: 'high',
         notification: {
+          title,
+          body,
+          imageUrl,
           clickAction,
           priority: 'high',
+          defaultSound: true,
+          defaultVibrateTimings: true,
+          channelId: 'benzochem_notifications',
+          color: '#FF6B35', // BenzoChem brand color
+          icon: 'ic_notification',
+          tag: 'benzochem_notification'
         },
+        data: data || {}
       },
       apns: {
         payload: {
           aps: {
+            alert: {
+              title,
+              body,
+            },
+            sound: 'default',
+            badge: 1,
             category: clickAction,
-          },
+            'mutable-content': 1
+          }
         },
+        fcmOptions: imageUrl ? {
+          imageUrl: imageUrl
+        } : undefined
       },
+      webpush: {
+        notification: {
+          title,
+          body,
+          icon: '/icons/notification-icon.png',
+          badge: '/icons/badge-icon.png',
+          image: imageUrl,
+          tag: 'benzochem-notification',
+          requireInteraction: true
+        },
+        fcmOptions: {
+          link: clickAction
+        }
+      }
     };
 
     const response = await messaging.send(message);
@@ -111,9 +146,35 @@ export async function sendUserPushNotification({
     };
   } catch (error) {
     console.error('Error sending message:', error);
+    
+    // Enhanced error handling
+    let errorMessage = 'Unknown error';
+    if (error instanceof Error) {
+      errorMessage = error.message;
+      
+      // Check for specific Firebase error codes
+      if ('code' in error) {
+        const firebaseError = error as any;
+        switch (firebaseError.code) {
+          case 'messaging/registration-token-not-registered':
+            errorMessage = 'FCM token is not registered or has expired. Please regenerate the token.';
+            break;
+          case 'messaging/invalid-registration-token':
+            errorMessage = 'FCM token format is invalid. Please check the token.';
+            break;
+          case 'messaging/mismatched-credential':
+            errorMessage = 'Firebase credentials mismatch. Please check your service account.';
+            break;
+          case 'messaging/invalid-argument':
+            errorMessage = 'Invalid message payload. Please check the notification data.';
+            break;
+        }
+      }
+    }
+
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
+      error: errorMessage,
     };
   }
 }

@@ -456,7 +456,7 @@ export const logPushNotification = mutation({
     target: v.string(),
     title: v.string(),
     body: v.string(),
-    data: v.object({}),
+    data: v.any(),
     result: v.object({
       success: v.boolean(),
       message: v.string(),
@@ -474,5 +474,25 @@ export const logPushNotification = mutation({
       result: args.result,
       sentAt: args.sentAt,
     });
+  },
+});
+
+// Query to get all push notification logs
+export const getAllPushNotificationLogs = query({
+  args: {
+    limit: v.optional(v.number()),
+    offset: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const limit = args.limit || 100;
+    const offset = args.offset || 0;
+    
+    const logs = await ctx.db
+      .query("pushNotificationLogs")
+      .order("desc")
+      .collect();
+    
+    // Apply pagination
+    return logs.slice(offset, offset + limit);
   },
 });

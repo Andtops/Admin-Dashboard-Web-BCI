@@ -3,6 +3,10 @@ import {
   sendUserPushNotification,
   sendBulkPushNotifications,
 } from '../../../../lib/firebase-admin';
+import { ConvexHttpClient } from 'convex/browser';
+import { api } from '../../../../../convex/_generated/api';
+
+const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
 export async function POST(request: NextRequest) {
   try {
@@ -54,19 +58,35 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Log notification (simple console log for now)
-    console.log('Push notification sent:', {
+    // Log notification to Convex database
+    const logId = await convex.mutation(api.notifications.logPushNotification, {
+      target: tokens.length === 1 ? 'single' : 'multiple',
+      title,
+      body: messageBody,
+      data: data || {},
+      result: {
+        success: result.success,
+        message: result.message || 'Push notification sent',
+        successCount: 'successCount' in result ? (result.successCount || 0) : (result.success ? 1 : 0),
+        failureCount: 'failureCount' in result ? (result.failureCount || 0) : (result.success ? 0 : 1),
+      },
+      sentAt: Date.now(),
+    });
+
+    console.log('✅ Push notification sent and logged to Convex:', {
       target: tokens.length === 1 ? 'single' : 'multiple',
       title,
       body: messageBody,
       tokens: tokens.length,
       result,
+      logId,
       timestamp: new Date().toISOString(),
     });
 
     return NextResponse.json({
       success: true,
       result,
+      logId,
       message: 'Push notification sent successfully',
     });
   } catch (error) {
