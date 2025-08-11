@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "../../../../../convex/_generated/api";
+import { withApiKeyAuth } from "@/lib/apiKeyAuth";
 
 const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
-export async function GET(request: NextRequest) {
+export const GET = withApiKeyAuth(async (request: NextRequest, apiKey) => {
   try {
     const { searchParams } = new URL(request.url);
     const productId = searchParams.get("productId");
@@ -25,7 +26,10 @@ export async function GET(request: NextRequest) {
       offset: offset ? Number(offset) : undefined,
     });
 
-    return NextResponse.json(reviews);
+    return NextResponse.json({
+      success: true,
+      data: reviews
+    });
   } catch (error) {
     console.error("Error fetching product reviews:", error);
     return NextResponse.json(
@@ -33,4 +37,4 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+}, { requiredPermission: "reviews:read" });

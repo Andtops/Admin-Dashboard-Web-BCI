@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "../../../../../convex/_generated/api";
+import { withApiKeyAuth } from "@/lib/apiKeyAuth";
 
 const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
-export async function POST(request: NextRequest) {
+export const POST = withApiKeyAuth(async (request: NextRequest, apiKey) => {
   try {
     const {
       reviewId,
@@ -51,7 +52,10 @@ export async function POST(request: NextRequest) {
       ipAddress,
     });
 
-    return NextResponse.json(result);
+    return NextResponse.json({
+      success: true,
+      data: result
+    });
   } catch (error: any) {
     console.error("Error reporting review:", error);
     return NextResponse.json(
@@ -59,4 +63,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+}, { requiredPermission: "reviews:write" });

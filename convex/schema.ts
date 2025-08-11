@@ -904,4 +904,44 @@ export default defineSchema({
     .index("by_status", ["status"])
     .index("by_resolved_by", ["resolvedBy"])
     .index("by_created_at", ["createdAt"]),
+
+  // FCM Tokens table - for push notifications
+  fcmTokens: defineTable({
+    token: v.string(), // FCM token
+    platform: v.union(v.literal("ios"), v.literal("android")), // Device platform
+    deviceInfo: v.object({
+      platform: v.optional(v.string()),
+      version: v.optional(v.any()),
+      model: v.optional(v.string()),
+      appVersion: v.optional(v.string()),
+    }),
+    userId: v.optional(v.union(v.id("users"), v.id("admins"))), // Associated user
+    registeredAt: v.number(),
+    lastUpdated: v.number(),
+    unregisteredAt: v.optional(v.number()),
+    isActive: v.boolean(),
+  })
+    .index("by_token", ["token"])
+    .index("by_user_id", ["userId"])
+    .index("by_platform", ["platform"])
+    .index("by_is_active", ["isActive"])
+    .index("by_registered_at", ["registeredAt"]),
+
+  // Push Notification Logs table - for tracking sent notifications
+  pushNotificationLogs: defineTable({
+    target: v.string(), // 'single', 'multiple', 'all_users'
+    title: v.string(),
+    body: v.string(),
+    data: v.object({}), // Additional data sent with notification
+    result: v.object({
+      success: v.boolean(),
+      message: v.string(),
+      successCount: v.number(),
+      failureCount: v.number(),
+    }),
+    sentAt: v.number(),
+  })
+    .index("by_target", ["target"])
+    .index("by_sent_at", ["sentAt"])
+    .index("by_success", ["result.success"]),
 });

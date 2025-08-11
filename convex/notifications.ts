@@ -344,3 +344,135 @@ export const getNotificationStats = query({
     return stats;
   },
 });
+
+// FCM Token Management
+
+// Mutation to register FCM token
+export const registerFCMToken = mutation({
+  args: {
+    token: v.string(),
+    platform: v.union(v.literal("ios"), v.literal("android")),
+    deviceInfo: v.object({
+      platform: v.optional(v.string()),
+      version: v.optional(v.any()),
+      model: v.optional(v.string()),
+      appVersion: v.optional(v.string()),
+    }),
+    userId: v.optional(v.union(v.id("users"), v.id("admins"))),
+    registeredAt: v.number(),
+  },
+  handler: async (ctx, args) => {
+    // Check if token already exists
+    const existingToken = await ctx.db
+      .query("fcmTokens")
+      .filter((q) => q.eq(q.field("token"), args.token))
+      .first();
+
+    if (existingToken) {
+      // Update existing token
+      await ctx.db.patch(existingToken._id, {
+        platform: args.platform,
+        deviceInfo: args.deviceInfo,
+        userId: args.userId,
+        lastUpdated: args.registeredAt,
+        isActive: true,
+      });
+      return existingToken._id;
+    } else {
+      // Create new token record
+      return await ctx.db.insert("fcmTokens", {
+        token: args.token,
+        platform: args.platform,
+        deviceInfo: args.deviceInfo,
+        userId: args.userId,
+        registeredAt: args.registeredAt,
+        lastUpdated: args.registeredAt,
+        isActive: true,
+      });
+    }
+  },
+});
+
+// Mutation to unregister FCM token
+export const unregisterFCMToken = mutation({
+  args: {
+    token: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const tokenRecord = await ctx.db
+      .query("fcmTokens")
+      .filter((q) => q.eq(q.field("token"), args.token))
+      .first();
+
+    if (tokenRecord) {
+      await ctx.db.patch(tokenRecord._id, {
+        isActive: false,
+        unregisteredAt: Date.now(),
+      });
+    }
+  },
+});
+
+// Query to get FCM tokens for specific users
+export const getFCMTokensForUsers = query({
+  args: {
+    userIds: v.array(v.union(v.id("users"), v.id("admins"))),
+  },
+  handler: async (ctx, args) => {
+    const tokens = [];
+
+    for (const userId of args.userIds) {
+      const userTokens = await ctx.db
+        .query("fcmTokens")
+        .filter((q) =>
+          q.and(
+            q.eq(q.field("userId"), userId),
+            q.eq(q.field("isActive"), true)
+          )
+        )
+        .collect();
+
+      tokens.push(...userTokens);
+    }
+
+    return tokens;
+  },
+});
+
+// Query to get all active FCM tokens
+export const getAllActiveFCMTokens = query({
+  args: {},
+  handler: async (ctx) => {
+    return await ctx.db
+      .query("fcmTokens")
+      .filter((q) => q.eq(q.field("isActive"), true))
+      .collect();
+  },
+});
+
+// Mutation to log push notification
+export const logPushNotification = mutation({
+  args: {
+    target: v.string(),
+    title: v.string(),
+    body: v.string(),
+    data: v.object({}),
+    result: v.object({
+      success: v.boolean(),
+      message: v.string(),
+      successCount: v.number(),
+      failureCount: v.number(),
+    }),
+    sentAt: v.number(),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db.insert("pushNotificationLogs", {
+      target: args.target,
+      title: args.title,
+      body: args.body,
+      data: args.data,
+      result: args.result,
+      sentAt: args.sentAt,
+    });
+  },
+});

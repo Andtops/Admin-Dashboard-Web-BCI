@@ -1,7 +1,15 @@
 /**
- * Notification utilities for Brevo email integration
- * Handles email notifications for user management actions
+ * Notification utilities for Brevo email integration and Firebase push notifications
+ * Handles email notifications and push notifications for user management actions
  */
+
+import {
+  sendPushNotification,
+  sendMulticastPushNotification,
+  PushNotificationData,
+  NotificationTarget,
+  NotificationOptions
+} from './firebase-messaging';
 
 export interface NotificationData {
   type: 'user_approved' | 'user_rejected' | 'user_updated' | 'admin_action';
@@ -473,6 +481,183 @@ export function formatUserBusinessInfo(user: any): NotificationData['userBusines
     isGstVerified: user.isGstVerified || false,
     constitutionOfBusiness: user.constitutionOfBusiness,
     principalPlaceOfBusiness: user.principalPlaceOfBusiness,
+  };
+}
+
+/**
+ * Send push notification to user
+ */
+export async function sendUserPushNotification(params: {
+  userToken: string;
+  title: string;
+  body: string;
+  data?: Record<string, string>;
+  imageUrl?: string;
+  clickAction?: string;
+  priority?: 'normal' | 'high';
+}): Promise<NotificationResponse> {
+  try {
+    const notificationData: PushNotificationData = {
+      title: params.title,
+      body: params.body,
+      data: params.data,
+      imageUrl: params.imageUrl,
+      clickAction: params.clickAction,
+    };
+
+    const target: NotificationTarget = {
+      token: params.userToken,
+    };
+
+    const options: NotificationOptions = {
+      priority: params.priority || 'high',
+      channelId: 'benzochem_notifications',
+    };
+
+    const result = await sendPushNotification(target, notificationData, options);
+
+    return {
+      success: result.success,
+      message: result.success ? 'Push notification sent successfully' : result.error || 'Failed to send push notification',
+      timestamp: new Date().toISOString(),
+      messageId: result.messageId,
+    };
+  } catch (error) {
+    console.error('Error sending push notification:', error);
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : 'Unknown error',
+      timestamp: new Date().toISOString(),
+    };
+  }
+}
+
+/**
+ * Send push notification to multiple users
+ */
+export async function sendMultipleUsersPushNotification(params: {
+  userTokens: string[];
+  title: string;
+  body: string;
+  data?: Record<string, string>;
+  imageUrl?: string;
+  clickAction?: string;
+  priority?: 'normal' | 'high';
+}): Promise<NotificationResponse & { successCount: number; failureCount: number }> {
+  try {
+    const notificationData: PushNotificationData = {
+      title: params.title,
+      body: params.body,
+      data: params.data,
+      imageUrl: params.imageUrl,
+      clickAction: params.clickAction,
+    };
+
+    const options: NotificationOptions = {
+      priority: params.priority || 'high',
+      channelId: 'benzochem_notifications',
+    };
+
+    const result = await sendMulticastPushNotification(params.userTokens, notificationData, options);
+
+    return {
+      success: result.success,
+      message: `Push notifications sent. Success: ${result.successCount}, Failed: ${result.failureCount}`,
+      timestamp: new Date().toISOString(),
+      successCount: result.successCount,
+      failureCount: result.failureCount,
+    };
+  } catch (error) {
+    console.error('Error sending multicast push notification:', error);
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : 'Unknown error',
+      timestamp: new Date().toISOString(),
+      successCount: 0,
+      failureCount: params.userTokens.length,
+    };
+  }
+}
+
+/**
+ * Send combined email and push notification for user approval
+ */
+export async function sendUserApprovalNotifications(params: {
+  userId: string;
+  userEmail: string;
+  userPhone?: string;
+  userName: string;
+  userToken?: string;
+  customMessage?: string;
+  adminEmail: string;
+  adminName: string;
+  userBusinessInfo?: NotificationData['userBusinessInfo'];
+}): Promise<{ email: NotificationResponse; push?: NotificationResponse }> {
+  // Send email notification
+  const emailResult = await sendUserApprovalNotification(params);
+
+  let pushResult: NotificationResponse | undefined;
+
+  // Send push notification if token is available
+  if (params.userToken) {
+    pushResult = await sendUserPushNotification({
+      userToken: params.userToken,
+      title: '🎉 Account Approved!',
+      body: `Welcome to Benzochem Industries, ${params.userName}! Your account has been approved.`,
+      data: {
+        type: 'user_approval',
+        userId: params.userId,
+        action: 'account_approved',
+      },
+      clickAction: '/dashboard',
+      priority: 'high',
+    });
+  }
+
+  return {
+    email: emailResult,
+    push: pushResult,
+  };
+}
+
+/**
+ * Send combined email and push notification for user rejection
+ */
+export async function sendUserRejectionNotifications(params: {
+  userId: string;
+  userEmail: string;
+  userPhone?: string;
+  userName: string;
+  userToken?: string;
+  rejectionReason: string;
+  adminEmail: string;
+  adminName: string;
+  userBusinessInfo?: NotificationData['userBusinessInfo'];
+}): Promise<{ email: NotificationResponse; push?: NotificationResponse }> {
+  // Send email notification
+  const emailResult = await sendUserRejectionNotification(params);
+
+  let pushResult: NotificationResponse | undefined;
+
+  // Send push notification if token is available
+  if (params.userToken) {
+    pushResult = await sendUserPushNotification({
+      userToken: params.userToken,
+      title: 'Account Application Update',
+      body: `Your Benzochem Industries account application requires attention. Please check your email for details.`,
+      data: {
+        type: 'user_rejection',
+        userId: params.userId,
+        action: 'account_rejected',
+      },
+      clickAction: '/support',
+      priority: 'high',
+    });
+  }
+
+  return {
+    email: emailResult,
+    push: pushResult,
   };
 }
 

@@ -38,6 +38,11 @@ yarn-error.log*
 .env.production
 .env.test
 
+# Firebase service account files - NEVER commit these
+config/*.json
+config/*firebase*.json
+*firebase-adminsdk*.json
+
 # vercel
 .vercel
 

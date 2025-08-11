@@ -17,17 +17,19 @@ console.log("The user application is trying to connect to the admin API but");
 console.log("the API key doesn't have the required permissions.");
 console.log();
 
-console.log("Current API key in user/.env.local:");
-console.log("bzk_live_6a30bzNDxDggC4b6XXe7TTEqHp448vTw");
+console.log("Current API key in mobile app:");
+console.log("bzk_live_nGkfHjbSjzjy8Ex76T32F54tcx8RgRUQ");
 console.log();
 
-console.log("Required permissions for quotations to work:");
+console.log("Required permissions for the mobile app to work:");
 console.log("- users:read");
 console.log("- users:write");
 console.log("- products:read");
 console.log("- collections:read");
 console.log("- quotations:read");
 console.log("- quotations:write");
+console.log("- reviews:read");
+console.log("- reviews:write");
 console.log();
 
 console.log("To fix this issue, you have two options:");
@@ -70,9 +72,9 @@ async function setupApiKey() {
     // For now, we'll create a manual insertion script
     
     const apiKeyData = {
-      name: "User App API Key",
-      key: "bzk_live_6a30bzNDxDggC4b6XXe7TTEqHp448vTw",
-      keyId: "6a30bzND",
+      name: "Mobile App API Key",
+      key: "bzk_live_nGkfHjbSjzjy8Ex76T32F54tcx8RgRUQ",
+      keyId: "nGkfHjbS",
       environment: "live",
       permissions: [
         "users:read",
@@ -80,7 +82,9 @@ async function setupApiKey() {
         "products:read",
         "collections:read",
         "quotations:read",
-        "quotations:write"
+        "quotations:write",
+        "reviews:read",
+        "reviews:write"
       ],
       isActive: true,
       rateLimit: {
