@@ -22,6 +22,9 @@ const PUBLIC_ROUTES = [
   '/api/v1/analytics/track-visitor', // Allow visitor tracking without auth
   '/analytics-tracker.js', // Allow tracking script access
   '/analytics-demo', // Allow demo page access
+  '/api/notifications/register-token', // Allow FCM token registration
+  '/api/notifications/send-push', // Allow push notification sending
+  '/api/notifications/test', // Allow notification testing
 ];
 
 // Define routes that should redirect to dashboard if already authenticated
@@ -53,6 +56,35 @@ export async function middleware(request: NextRequest) {
     
     // For track-visitor endpoint, allow without authentication
     if (pathname === '/api/v1/analytics/track-visitor') {
+      return response;
+    }
+  }
+
+  // Handle CORS for notification API endpoints (for mobile app)
+  if (pathname.startsWith('/api/notifications/')) {
+    // Handle preflight requests
+    if (request.method === 'OPTIONS') {
+      return new NextResponse(null, {
+        status: 200,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-API-Key',
+          'Access-Control-Max-Age': '86400',
+        },
+      });
+    }
+
+    // Add CORS headers to actual requests
+    const response = NextResponse.next();
+    response.headers.set('Access-Control-Allow-Origin', '*');
+    response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-API-Key');
+    
+    // Allow notification endpoints without authentication for mobile app
+    if (pathname.startsWith('/api/notifications/register-token') || 
+        pathname.startsWith('/api/notifications/send-push') ||
+        pathname.startsWith('/api/notifications/test')) {
       return response;
     }
   }
