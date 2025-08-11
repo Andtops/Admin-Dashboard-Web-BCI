@@ -119,14 +119,7 @@ export default function MarketingPage() {
 
   useEffect(() => {
     loadRealMarketingData();
-
-    // Set up real-time data refresh every 30 seconds
-    const interval = setInterval(() => {
-      refreshData();
-    }, 30000);
-
-    return () => clearInterval(interval);
-  }, [refreshData]);
+  }, []);
 
   const loadRealMarketingData = async () => {
     try {
@@ -675,7 +668,7 @@ export default function MarketingPage() {
                             Create and manage advanced marketing campaigns with scheduling and targeting
                           </CardDescription>
                         </div>
-                        <Button 
+                        <Button
                           onClick={async () => {
                             // Create a sample campaign for demonstration
                             const sampleCampaign = {
@@ -693,7 +686,7 @@ export default function MarketingPage() {
                               },
                               status: "running" as const
                             };
-                            
+
                             try {
                               // Send real notification
                               const response = await fetch('/api/notifications/send-push', {
@@ -710,7 +703,7 @@ export default function MarketingPage() {
                                   }
                                 })
                               });
-                              
+
                               if (response.ok) {
                                 await refreshData();
                                 console.log('✅ Campaign launched successfully');
@@ -752,14 +745,14 @@ export default function MarketingPage() {
                                       {new Date(notification.sentAt).toLocaleDateString()}
                                     </span>
                                   </div>
-                                  
+
                                   <h4 className="font-semibold text-gray-900 dark:text-white mb-2">
                                     {notification.title}
                                   </h4>
                                   <p className="text-sm text-gray-600 dark:text-gray-400 mb-3 line-clamp-2">
                                     {notification.body}
                                   </p>
-                                  
+
                                   <div className="grid grid-cols-2 gap-4 text-sm">
                                     <div>
                                       <span className="text-gray-500">Sent:</span>
@@ -823,7 +816,7 @@ export default function MarketingPage() {
                             <p className="text-sm text-gray-500">{stats.totalSubscribers} users</p>
                           </CardContent>
                         </Card>
-                        
+
                         <Card className="border-2 border-dashed border-gray-300 hover:border-gray-400 transition-colors">
                           <CardContent className="p-6 text-center">
                             <Smartphone className="h-8 w-8 text-blue-500 mx-auto mb-2" />
@@ -831,7 +824,7 @@ export default function MarketingPage() {
                             <p className="text-sm text-gray-500">{stats.platformBreakdown.ios} devices</p>
                           </CardContent>
                         </Card>
-                        
+
                         <Card className="border-2 border-dashed border-gray-300 hover:border-gray-400 transition-colors">
                           <CardContent className="p-6 text-center">
                             <Smartphone className="h-8 w-8 text-green-500 mx-auto mb-2" />
@@ -858,8 +851,8 @@ export default function MarketingPage() {
                     </p>
                   </div>
                   <div className="flex gap-2">
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      variant="outline"
                       size="sm"
                       onClick={async () => {
                         // Export analytics data
@@ -877,7 +870,7 @@ export default function MarketingPage() {
                           platformBreakdown: stats.platformBreakdown,
                           exportedAt: new Date().toISOString()
                         };
-                        
+
                         const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
                         const url = URL.createObjectURL(blob);
                         const a = document.createElement('a');
@@ -1006,7 +999,7 @@ export default function MarketingPage() {
                             {notifications.slice(0, 10).map((notification) => {
                               const successRate = ((notification.result.successCount / (notification.result.successCount + notification.result.failureCount)) * 100);
                               const estimatedOpens = Math.floor(notification.result.successCount * 0.25);
-                              
+
                               return (
                                 <tr key={notification._id} className="border-b hover:bg-gray-50 dark:hover:bg-gray-800/50">
                                   <td className="py-3 px-4">
@@ -1064,7 +1057,7 @@ export default function MarketingPage() {
                           </div>
                         </div>
                       </div>
-                      
+
                       <div className="space-y-4">
                         <h4 className="font-medium text-gray-900 dark:text-white">Notification Volume</h4>
                         <div className="flex items-center gap-3">
