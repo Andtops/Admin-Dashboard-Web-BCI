@@ -496,3 +496,30 @@ export const getAllPushNotificationLogs = query({
     return logs.slice(offset, offset + limit);
   },
 });
+
+// Mutation to log notification for analytics (used by enhanced notification sender)
+export const logNotification = mutation({
+  args: {
+    title: v.string(),
+    body: v.string(),
+    category: v.string(),
+    priority: v.string(),
+    tokensCount: v.number(),
+    result: v.any(),
+    sentAt: v.number(),
+    data: v.any(),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db.insert("notificationAnalytics", {
+      title: args.title,
+      body: args.body,
+      category: args.category,
+      priority: args.priority,
+      tokensCount: args.tokensCount,
+      result: args.result,
+      sentAt: args.sentAt,
+      data: args.data,
+      createdAt: Date.now(),
+    });
+  },
+});
