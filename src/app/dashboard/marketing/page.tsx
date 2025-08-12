@@ -512,6 +512,40 @@ export default function MarketingPage() {
                       <CardDescription>
                         Send notifications to all users or target individual users
                       </CardDescription>
+                      {/* FCM Token Status Indicator */}
+                      <div className="flex items-center gap-2 mt-2">
+                        <div className={`w-2 h-2 rounded-full ${fcmTokens.length > 0 ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                        <span className="text-xs text-gray-500">
+                          {fcmTokens.length > 0 
+                            ? `${fcmTokens.filter(token => token.isActive).length} active FCM tokens available`
+                            : 'No FCM tokens available - notifications cannot be sent'
+                          }
+                        </span>
+                      </div>
+                      {/* Debug Information */}
+                      {fcmTokens.length === 0 && (
+                        <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                          <div className="text-sm text-yellow-800">
+                            <strong>Why no FCM tokens?</strong>
+                            <ul className="mt-2 space-y-1 text-xs">
+                              <li>• No mobile apps have registered for push notifications yet</li>
+                              <li>• FCM tokens may have expired and need to be refreshed</li>
+                              <li>• Check if your mobile app is properly calling the token registration API</li>
+                              <li>• Verify Firebase configuration in your mobile app</li>
+                            </ul>
+                            <div className="mt-2">
+                              <Button 
+                                size="sm" 
+                                variant="outline" 
+                                onClick={() => window.open('/api/notifications/register-token', '_blank')}
+                                className="text-xs"
+                              >
+                                View Token Registration API
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
                     <Button
                       onClick={() => setIsUserSelectorOpen(true)}
@@ -540,6 +574,27 @@ export default function MarketingPage() {
                 }))}
                 onCreateNotification={async (notification) => {
                   try {
+                    // Check if there are any FCM tokens available
+                    if (!fcmTokens || fcmTokens.length === 0) {
+                      const errorMessage = 'No FCM tokens available. Please ensure mobile devices are registered and have valid tokens.';
+                      console.error('❌ Cannot send notification:', errorMessage);
+                      alert(errorMessage);
+                      return;
+                    }
+
+                    const validTokens = fcmTokens
+                      .filter(token => token.token && token.isActive)
+                      .map(token => token.token);
+
+                    if (validTokens.length === 0) {
+                      const errorMessage = 'No valid/active FCM tokens found. Please check token registration.';
+                      console.error('❌ Cannot send notification:', errorMessage);
+                      alert(errorMessage);
+                      return;
+                    }
+
+                    console.log(`📱 Sending notification to ${validTokens.length} devices...`);
+
                     // Send real notification via API
                     const response = await fetch('/api/notifications/send-push', {
                       method: 'POST',
@@ -547,7 +602,7 @@ export default function MarketingPage() {
                         'Content-Type': 'application/json',
                       },
                       body: JSON.stringify({
-                        tokens: fcmTokens.map(token => token.token),
+                        tokens: validTokens,
                         title: notification.title,
                         body: notification.message,
                         data: {

@@ -7,6 +7,7 @@ if (!admin.apps.length) {
     if (process.env.FIREBASE_SERVICE_ACCOUNT_PATH) {
       admin.initializeApp({
         credential: admin.credential.cert(process.env.FIREBASE_SERVICE_ACCOUNT_PATH),
+        projectId: process.env.FIREBASE_PROJECT_ID, // Explicitly set project ID
         databaseURL: process.env.FIREBASE_DATABASE_URL,
       });
     }
@@ -27,12 +28,14 @@ if (!admin.apps.length) {
 
       admin.initializeApp({
         credential: admin.credential.cert(serviceAccount as admin.ServiceAccount),
+        projectId: process.env.FIREBASE_PROJECT_ID, // Explicitly set project ID
         databaseURL: process.env.FIREBASE_DATABASE_URL,
       });
     }
     // Method 3: Use default credentials (if running on Google Cloud)
     else {
       admin.initializeApp({
+        projectId: process.env.FIREBASE_PROJECT_ID, // Explicitly set project ID
         databaseURL: process.env.FIREBASE_DATABASE_URL,
       });
     }

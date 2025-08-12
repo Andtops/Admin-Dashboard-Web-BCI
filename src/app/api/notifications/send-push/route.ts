@@ -6,11 +6,49 @@ import {
 import { ConvexHttpClient } from 'convex/browser';
 import { api } from '../../../../../convex/_generated/api';
 
-const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+// Initialize Convex client with error handling
+let convex: ConvexHttpClient;
+try {
+  if (!process.env.NEXT_PUBLIC_CONVEX_URL) {
+    throw new Error('NEXT_PUBLIC_CONVEX_URL environment variable is not set');
+  }
+  convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL);
+} catch (error) {
+  console.error('Failed to initialize Convex client:', error);
+}
 
 export async function POST(request: NextRequest) {
+  console.log('🚀 Push notification API called:', {
+    method: request.method,
+    url: request.url,
+    timestamp: new Date().toISOString(),
+    convexUrl: process.env.NEXT_PUBLIC_CONVEX_URL ? 'SET' : 'NOT_SET',
+    convexInitialized: !!convex
+  });
+
   try {
+    // Check if Convex client is initialized
+    if (!convex) {
+      console.error('❌ Convex client not initialized');
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: 'Service configuration error - Convex client not initialized',
+          debug: {
+            convexUrl: process.env.NEXT_PUBLIC_CONVEX_URL ? 'SET' : 'NOT_SET'
+          }
+        },
+        { status: 500 }
+      );
+    }
+
     const body = await request.json();
+    console.log('📝 Request body received:', {
+      hasTokens: !!body.tokens,
+      tokenCount: body.tokens?.length || 0,
+      hasTitle: !!body.title,
+      hasBody: !!body.body
+    });
     const {
       tokens, // direct tokens
       title,
@@ -99,4 +137,27 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+export async function OPTIONS(request: NextRequest) {
+  return new NextResponse(null, {
+    status: 200,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    },
+  });
+}export 
+async function GET(request: NextRequest) {
+  return NextResponse.json({
+    success: true,
+    message: 'Push notification API is working',
+    timestamp: new Date().toISOString(),
+    environment: {
+      convexUrl: process.env.NEXT_PUBLIC_CONVEX_URL ? 'SET' : 'NOT_SET',
+      convexInitialized: !!convex,
+      nodeEnv: process.env.NODE_ENV
+    }
+  });
 }
