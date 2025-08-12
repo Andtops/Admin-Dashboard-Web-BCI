@@ -38,7 +38,7 @@ export default function DashboardPage() {
             <div>
               <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">Home</h1>
               <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                Here's what's happening with your store today.
+                Here's what's happening with your store today's.
               </p>
             </div>
           </div>
