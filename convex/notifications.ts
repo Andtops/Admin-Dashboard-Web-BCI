@@ -510,15 +510,23 @@ export const logNotification = mutation({
     data: v.any(),
   },
   handler: async (ctx, args) => {
-    return await ctx.db.insert("notificationAnalytics", {
-      title: args.title,
-      body: args.body,
-      category: args.category,
-      priority: args.priority,
-      tokensCount: args.tokensCount,
-      result: args.result,
-      sentAt: args.sentAt,
-      data: args.data,
+    // Log notification activity to activityLogs table
+    return await ctx.db.insert("activityLogs", {
+      action: "notification_sent",
+      entityType: "notification",
+      entityId: `notification_${Date.now()}`,
+      newValues: {
+        title: args.title,
+        body: args.body,
+        category: args.category,
+        priority: args.priority,
+        tokensCount: args.tokensCount,
+        result: args.result,
+        sentAt: args.sentAt,
+        data: args.data,
+      },
+      performedBy: "system" as any, // System-generated notification
+      performedByType: "system",
       createdAt: Date.now(),
     });
   },
