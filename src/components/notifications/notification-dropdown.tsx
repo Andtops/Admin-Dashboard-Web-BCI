@@ -10,16 +10,16 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Bell,
-  User,
-  CheckCircle,
-  XCircle,
-  Package,
-  AlertTriangle,
-} from "lucide-react";
+import { Bell } from "lucide-react";
 import { useNotificationContext } from "@/contexts/notification-context";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { 
+  NOTIFICATION_TYPES, 
+  PRIORITY_CONFIG, 
+  NotificationType,
+  getNotificationIcon as getIconFromConstants
+} from "@/lib/notification-constants";
 
 export function NotificationDropdown() {
   const router = useRouter();
@@ -35,28 +35,13 @@ export function NotificationDropdown() {
       router.push('/dashboard/notifications');
     } catch (error) {
       console.error("Failed to mark notification as read:", error);
+      toast.error("Failed to mark notification as read");
     }
   };
 
   const getNotificationIcon = (type: string) => {
-    switch (type) {
-      case "user_registration":
-        return <User className="h-4 w-4" />;
-      case "user_approval":
-        return <CheckCircle className="h-4 w-4" />;
-      case "user_rejection":
-        return <XCircle className="h-4 w-4" />;
-      case "product_update":
-        return <Package className="h-4 w-4" />;
-      case "system_alert":
-        return <AlertTriangle className="h-4 w-4" />;
-      case "gst_verification":
-        return <CheckCircle className="h-4 w-4" />;
-      case "order_notification":
-        return <Package className="h-4 w-4" />;
-      default:
-        return <Bell className="h-4 w-4" />;
-    }
+    const IconComponent = getIconFromConstants(type as NotificationType);
+    return <IconComponent className="h-4 w-4" />;
   };
 
   const formatTimeAgo = (timestamp: number) => {
@@ -73,18 +58,7 @@ export function NotificationDropdown() {
   };
 
   const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case "urgent":
-        return "bg-red-500";
-      case "high":
-        return "bg-orange-500";
-      case "medium":
-        return "bg-blue-500";
-      case "low":
-        return "bg-green-500";
-      default:
-        return "bg-blue-500";
-    }
+    return PRIORITY_CONFIG[priority as keyof typeof PRIORITY_CONFIG]?.color || PRIORITY_CONFIG.medium.color;
   };
 
   return (

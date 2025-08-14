@@ -118,7 +118,10 @@ export default function UsersPage() {
         customMessage: approvalMessage || undefined,
       });
 
-      // Send approval email
+      // Send approval email and push notification
+      let emailSuccess = false;
+      let pushSuccess = false;
+
       try {
         const emailResponse = await fetch('/api/gmail-api', {
           method: 'POST',
@@ -139,16 +142,48 @@ export default function UsersPage() {
         });
 
         const emailResult = await emailResponse.json();
+        emailSuccess = emailResult.success;
         
-        if (emailResult.success) {
-          toast.success("User approved and notification email sent successfully");
-        } else {
-          toast.success("User approved successfully, but email notification failed");
+        if (!emailSuccess) {
           console.warn("Email sending failed:", emailResult.error);
         }
       } catch (emailError) {
-        toast.success("User approved successfully, but email notification failed");
         console.error("Email sending error:", emailError);
+      }
+
+      // Send push notification
+      try {
+        const pushResponse = await fetch('/api/notifications/enhanced/send', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            type: 'account_approval',
+            userId: selectedUser._id,
+            userEmail: selectedUser.email,
+            userName: `${selectedUser.firstName} ${selectedUser.lastName}`,
+            customMessage: approvalMessage || undefined,
+          }),
+        });
+
+        const pushResult = await pushResponse.json();
+        pushSuccess = pushResult.success;
+        
+        if (!pushSuccess) {
+          console.warn("Push notification failed:", pushResult.error);
+        }
+      } catch (pushError) {
+        console.error("Push notification error:", pushError);
+      }
+
+      // Show appropriate success message
+      if (emailSuccess && pushSuccess) {
+        toast.success("User approved! Email and push notifications sent successfully");
+      } else if (emailSuccess || pushSuccess) {
+        toast.success(`User approved! ${emailSuccess ? 'Email' : 'Push notification'} sent successfully`);
+      } else {
+        toast.success("User approved successfully, but notifications failed");
       }
 
       setShowApprovalDialog(false);
@@ -188,7 +223,10 @@ export default function UsersPage() {
         customMessage: rejectionMessage || undefined,
       });
 
-      // Send rejection email
+      // Send rejection email and push notification
+      let emailSuccess = false;
+      let pushSuccess = false;
+
       try {
         const emailResponse = await fetch('/api/gmail-api', {
           method: 'POST',
@@ -208,16 +246,48 @@ export default function UsersPage() {
         });
 
         const emailResult = await emailResponse.json();
+        emailSuccess = emailResult.success;
         
-        if (emailResult.success) {
-          toast.success("User rejected and notification email sent successfully");
-        } else {
-          toast.success("User rejected successfully, but email notification failed");
+        if (!emailSuccess) {
           console.warn("Email sending failed:", emailResult.error);
         }
       } catch (emailError) {
-        toast.success("User rejected successfully, but email notification failed");
         console.error("Email sending error:", emailError);
+      }
+
+      // Send push notification
+      try {
+        const pushResponse = await fetch('/api/notifications/enhanced/send', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            type: 'account_rejection',
+            userId: selectedUser._id,
+            userEmail: selectedUser.email,
+            userName: `${selectedUser.firstName} ${selectedUser.lastName}`,
+            rejectionReason: rejectionReason,
+          }),
+        });
+
+        const pushResult = await pushResponse.json();
+        pushSuccess = pushResult.success;
+        
+        if (!pushSuccess) {
+          console.warn("Push notification failed:", pushResult.error);
+        }
+      } catch (pushError) {
+        console.error("Push notification error:", pushError);
+      }
+
+      // Show appropriate success message
+      if (emailSuccess && pushSuccess) {
+        toast.success("User rejected! Email and push notifications sent successfully");
+      } else if (emailSuccess || pushSuccess) {
+        toast.success(`User rejected! ${emailSuccess ? 'Email' : 'Push notification'} sent successfully`);
+      } else {
+        toast.success("User rejected successfully, but notifications failed");
       }
 
       setShowRejectionDialog(false);

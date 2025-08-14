@@ -103,31 +103,31 @@ export const getUnreadCount = query({
   },
   handler: async (ctx, args) => {
     let query = ctx.db.query("notifications");
-    
+
     // Filter by recipient
     if (args.recipientType === "all_admins") {
       query = query.filter((q) => q.eq(q.field("recipientType"), "all_admins"));
     } else if (args.recipientType === "specific_user" && args.recipientId) {
-      query = query.filter((q) => 
+      query = query.filter((q) =>
         q.and(
           q.eq(q.field("recipientType"), "specific_user"),
           q.eq(q.field("recipientId"), args.recipientId)
         )
       );
     }
-    
+
     // Filter unread notifications
     query = query.filter((q) => q.eq(q.field("isRead"), false));
-    
+
     // Filter out expired notifications
     const now = Date.now();
-    query = query.filter((q) => 
+    query = query.filter((q) =>
       q.or(
         q.eq(q.field("expiresAt"), undefined),
         q.gt(q.field("expiresAt"), now)
       )
     );
-    
+
     const notifications = await query.collect();
     return notifications.length;
   },
@@ -171,7 +171,7 @@ export const createNotification = mutation({
   },
   handler: async (ctx, args) => {
     const now = Date.now();
-    
+
     const notificationId = await ctx.db.insert("notifications", {
       type: args.type,
       title: args.title,
@@ -287,7 +287,7 @@ export const deleteExpiredNotifications = mutation({
     const now = Date.now();
     const expiredNotifications = await ctx.db
       .query("notifications")
-      .filter((q) => 
+      .filter((q) =>
         q.and(
           q.neq(q.field("expiresAt"), undefined),
           q.lt(q.field("expiresAt"), now)
@@ -311,12 +311,12 @@ export const getNotificationStats = query({
   handler: async (ctx) => {
     const allNotifications = await ctx.db.query("notifications").collect();
     const now = Date.now();
-    
+
     // Filter out expired notifications
-    const activeNotifications = allNotifications.filter(n => 
+    const activeNotifications = allNotifications.filter(n =>
       !n.expiresAt || n.expiresAt > now
     );
-    
+
     const stats = {
       total: activeNotifications.length,
       unread: activeNotifications.filter(n => !n.isRead).length,
@@ -336,11 +336,11 @@ export const getNotificationStats = query({
         high: activeNotifications.filter(n => n.priority === "high").length,
         urgent: activeNotifications.filter(n => n.priority === "urgent").length,
       },
-      recentNotifications: activeNotifications.filter(n => 
+      recentNotifications: activeNotifications.filter(n =>
         n.createdAt > Date.now() - (24 * 60 * 60 * 1000) // Last 24 hours
       ).length,
     };
-    
+
     return stats;
   },
 });
@@ -486,12 +486,12 @@ export const getAllPushNotificationLogs = query({
   handler: async (ctx, args) => {
     const limit = args.limit || 100;
     const offset = args.offset || 0;
-    
+
     const logs = await ctx.db
       .query("pushNotificationLogs")
       .order("desc")
       .collect();
-    
+
     // Apply pagination
     return logs.slice(offset, offset + limit);
   },

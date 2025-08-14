@@ -3,19 +3,14 @@
 import { ProtectedRoute } from "@/components/auth/protected-route";
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { 
   Users, 
   Package, 
-  TrendingUp, 
-  TrendingDown,
+  TrendingUp,
   DollarSign,
   ShoppingBag,
   ArrowUpRight,
-  ArrowDownRight,
-  MoreHorizontal,
-  Plus,
 } from "lucide-react";
 import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
@@ -25,7 +20,6 @@ export default function DashboardPage() {
   // Get dashboard statistics
   const userStats = useQuery(api.users.getUserStats);
   const productStats = useQuery(api.products.getProductStats);
-  const quotationStats = useQuery(api.quotations.getQuotationStats);
   const liveVisitors = useQuery(api.analytics.getLiveVisitors);
   const visitorAnalytics = useQuery(api.analytics.getVisitorAnalytics, { timeRange: "24h" });
 
