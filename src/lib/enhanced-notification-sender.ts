@@ -67,7 +67,7 @@ export class EnhancedNotificationSender {
                 approvedAt: Date.now(),
                 notificationType: 'account_approved'
             },
-            targetUsers: [params.userId]
+            targetUsers: [params.userId, params.userEmail]
         };
 
         return await this.sendNotification(notification);
@@ -108,7 +108,7 @@ export class EnhancedNotificationSender {
                 rejectedAt: Date.now(),
                 notificationType: 'account_rejected'
             },
-            targetUsers: [params.userId]
+            targetUsers: [params.userId, params.userEmail]
         };
 
         return await this.sendNotification(notification);
@@ -479,28 +479,69 @@ export class EnhancedNotificationSender {
      */
     private static async getTargetTokens(notificationData: EnhancedNotificationData): Promise<string[]> {
         try {
+            console.log('🎯 Getting target tokens for notification:', {
+                sendToAll: notificationData.sendToAll,
+                targetUsers: notificationData.targetUsers,
+                targetSegments: notificationData.targetSegments
+            });
+
             // Get all active FCM tokens
             const activeTokens = await convex.query(api.notifications.getAllActiveFCMTokens);
+            console.log(`📱 Found ${activeTokens.length} active FCM tokens`);
 
+            // Send to all users
             if (notificationData.sendToAll) {
+                console.log('📢 Sending to all users');
                 return activeTokens.map((token: any) => token.token);
             }
 
+            // Send to specific users by userId
             if (notificationData.targetUsers && notificationData.targetUsers.length > 0) {
-                return activeTokens
-                    .filter((token: any) => notificationData.targetUsers!.includes(token.userId))
-                    .map((token: any) => token.token);
+                console.log('👤 Filtering tokens for specific users:', notificationData.targetUsers);
+                
+                const filteredTokens = activeTokens.filter((token: any) => {
+                    // Check both userId and userEmail for matching
+                    const matchesUserId = token.userId && notificationData.targetUsers!.includes(token.userId);
+                    const matchesUserEmail = token.userEmail && notificationData.targetUsers!.includes(token.userEmail);
+                    
+                    if (matchesUserId || matchesUserEmail) {
+                        console.log('✅ Token matched for user:', {
+                            tokenUserId: token.userId,
+                            tokenUserEmail: token.userEmail,
+                            targetUsers: notificationData.targetUsers
+                        });
+                        return true;
+                    }
+                    return false;
+                });
+
+                console.log(`🎯 Found ${filteredTokens.length} matching tokens for target users`);
+                
+                if (filteredTokens.length === 0) {
+                    console.warn('⚠️ No FCM tokens found for target users. This could mean:');
+                    console.warn('   - User has not logged into mobile app');
+                    console.warn('   - User has not granted notification permissions');
+                    console.warn('   - FCM token registration failed');
+                    console.warn('   - User ID mismatch between admin and mobile app');
+                }
+
+                return filteredTokens.map((token: any) => token.token);
             }
 
+            // Send to specific segments
             if (notificationData.targetSegments && notificationData.targetSegments.length > 0) {
-                // Implement segment-based filtering here
-                // For now, return all tokens
+                console.log('🏷️ Segment-based targeting not yet implemented');
+                console.log('📢 Falling back to sending to all users for segments:', notificationData.targetSegments);
+                
+                // TODO: Implement segment-based user filtering
+                // For now, send to all users when segments are specified
                 return activeTokens.map((token: any) => token.token);
             }
 
+            console.log('❌ No targeting criteria specified');
             return [];
         } catch (error) {
-            console.error('Error getting target tokens:', error);
+            console.error('❌ Error getting target tokens:', error);
             return [];
         }
     }
