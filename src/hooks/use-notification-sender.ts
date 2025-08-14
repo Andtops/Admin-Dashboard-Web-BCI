@@ -1,5 +1,10 @@
 import { useState, useCallback } from 'react';
-import { NotificationForm, NotificationResponse } from '@/types/notifications';
+import { NotificationCreateRequest, NotificationResponse, RecipientType } from '@/types/notifications';
+
+// Define form interface to match the one in use-notification-forms.ts
+interface NotificationForm extends NotificationCreateRequest {
+  recipientType: RecipientType;
+}
 
 export const useNotificationSender = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -26,7 +31,11 @@ export const useNotificationSender = () => {
       console.error('Error sending notification:', error);
       const errorResult: NotificationResponse = {
         success: false,
-        error: 'Failed to send notification'
+        error: {
+          code: 'SEND_FAILED',
+          message: 'Failed to send notification'
+        },
+        timestamp: Date.now()
       };
       setLastResult(errorResult);
       return errorResult;

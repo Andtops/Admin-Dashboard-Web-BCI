@@ -36,7 +36,7 @@ export const NotificationResult: React.FC<NotificationResultProps> = ({ result }
           Failed to send notification
         </p>
         <p className="text-xs text-red-600">
-          {result.error}
+          {result.error?.message || 'An error occurred'}
         </p>
       </div>
     </div>

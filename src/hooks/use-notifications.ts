@@ -4,13 +4,18 @@ import { useAuth } from "@/contexts/auth-context";
 import { useEffect, useState, useCallback } from "react";
 import { toast } from "sonner";
 import { notificationService } from "@/lib/notification-service";
+import { 
+  getNotificationIcon, 
+  getPriorityConfig
+} from "@/lib/notification-constants";
+import type { NotificationType, NotificationPriority } from "@/types/notifications";
 
 export interface NotificationData {
   _id: string;
-  type: "user_registration" | "user_approval" | "user_rejection" | "product_update" | "system_alert" | "gst_verification" | "order_notification";
+  type: NotificationType;
   title: string;
   message: string;
-  priority: "low" | "medium" | "high" | "urgent";
+  priority: NotificationPriority;
   isRead: boolean;
   createdAt: number;
   readAt?: number;
@@ -189,28 +194,7 @@ export function useNotifications() {
   const recentNotifications = notifications?.filter(n => !n.isRead).slice(0, 5) || [];
 
   // Utility functions
-  const getNotificationIcon = (type: string) => {
-    switch (type) {
-      case "user_registration":
-        return "👤";
-      case "user_approval":
-        return "✅";
-      case "user_rejection":
-        return "❌";
-      case "product_update":
-        return "📦";
-      case "system_alert":
-        return "⚠️";
-      case "gst_verification":
-        return "✅";
-      case "order_notification":
-        return "📋";
-      default:
-        return "🔔";
-    }
-  };
-
-  const formatTimeAgo = (timestamp: number) => {
+  const formatTimeAgo = useCallback((timestamp: number) => {
     const now = Date.now();
     const diff = now - timestamp;
     const minutes = Math.floor(diff / (1000 * 60));
@@ -221,22 +205,12 @@ export function useNotifications() {
     if (minutes < 60) return `${minutes} minute${minutes > 1 ? 's' : ''} ago`;
     if (hours < 24) return `${hours} hour${hours > 1 ? 's' : ''} ago`;
     return `${days} day${days > 1 ? 's' : ''} ago`;
-  };
+  }, []);
 
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case "urgent":
-        return "text-red-600 bg-red-100";
-      case "high":
-        return "text-orange-600 bg-orange-100";
-      case "medium":
-        return "text-blue-600 bg-blue-100";
-      case "low":
-        return "text-green-600 bg-green-100";
-      default:
-        return "text-blue-600 bg-blue-100";
-    }
-  };
+  const getPriorityColor = useCallback((priority: NotificationPriority) => {
+    const config = getPriorityConfig(priority);
+    return config.textColor;
+  }, []);
 
   return {
     // Data

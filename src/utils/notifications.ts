@@ -1,5 +1,5 @@
 import { Notification, NotificationType } from '@/types/notifications';
-import { NOTIFICATION_TYPES } from '@/constants/notifications';
+import { NOTIFICATION_TYPES } from '@/lib/notification-constants';
 
 export const formatDate = (timestamp: number): string => {
   return new Date(timestamp).toLocaleDateString("en-US", {
@@ -12,7 +12,7 @@ export const formatDate = (timestamp: number): string => {
 };
 
 export const getNotificationTypeLabel = (type: NotificationType): string => {
-  return NOTIFICATION_TYPES[type] || type;
+  return NOTIFICATION_TYPES[type]?.label || type;
 };
 
 export const filterNotifications = (
@@ -46,10 +46,10 @@ export const filterNotifications = (
     }
     
     // Read status filter
-    if (readFilter === "read" && !notification.isRead) {
+    if (readFilter === "read" && !notification.readAt) {
       return false;
     }
-    if (readFilter === "unread" && notification.isRead) {
+    if (readFilter === "unread" && notification.readAt) {
       return false;
     }
     

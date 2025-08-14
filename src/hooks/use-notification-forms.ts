@@ -1,12 +1,26 @@
 import { useState } from 'react';
-import { NotificationForm, NotificationType } from '@/types/notifications';
+import { NotificationCreateRequest, NotificationType, NotificationPriority, RecipientType } from '@/types/notifications';
+import { getDefaultPriority } from '@/lib/notification-constants';
+
+// Define form interface based on NotificationCreateRequest
+interface NotificationForm {
+  type: NotificationType;
+  title: string;
+  message: string;
+  priority: NotificationPriority;
+  recipientType: RecipientType;
+  recipientId?: string;
+  metadata?: Record<string, any>;
+  scheduledFor?: number;
+}
 
 const createInitialForm = (type: NotificationType): NotificationForm => {
   const baseForm: NotificationForm = {
     type,
     title: '',
     message: '',
-    priority: type === 'account_approval' || type === 'account_rejection' || type === 'order_update' ? 'high' : 'normal'
+    priority: getDefaultPriority(type),
+    recipientType: 'all_admins'
   };
 
   return baseForm;
@@ -14,41 +28,41 @@ const createInitialForm = (type: NotificationType): NotificationForm => {
 
 export const useNotificationForms = () => {
   const [accountForm, setAccountForm] = useState<NotificationForm>(
-    createInitialForm('account_approval')
+    createInitialForm('user_approval')
   );
   
   const [productForm, setProductForm] = useState<NotificationForm>(
-    createInitialForm('new_product')
+    createInitialForm('product_update')
   );
   
   const [orderForm, setOrderForm] = useState<NotificationForm>(
-    createInitialForm('order_update')
+    createInitialForm('order_notification')
   );
   
-  const [promoForm, setPromoForm] = useState<NotificationForm>(
-    createInitialForm('promotion')
+  const [gstForm, setGstForm] = useState<NotificationForm>(
+    createInitialForm('gst_verification')
   );
   
   const [systemForm, setSystemForm] = useState<NotificationForm>(
-    createInitialForm('system')
+    createInitialForm('system_alert')
   );
 
   const resetForm = (tab: string) => {
     switch (tab) {
       case 'account':
-        setAccountForm(createInitialForm('account_approval'));
+        setAccountForm(createInitialForm('user_approval'));
         break;
       case 'product':
-        setProductForm(createInitialForm('new_product'));
+        setProductForm(createInitialForm('product_update'));
         break;
       case 'order':
-        setOrderForm(createInitialForm('order_update'));
+        setOrderForm(createInitialForm('order_notification'));
         break;
-      case 'promotion':
-        setPromoForm(createInitialForm('promotion'));
+      case 'gst':
+        setGstForm(createInitialForm('gst_verification'));
         break;
       case 'system':
-        setSystemForm(createInitialForm('system'));
+        setSystemForm(createInitialForm('system_alert'));
         break;
     }
   };
@@ -58,7 +72,7 @@ export const useNotificationForms = () => {
       case 'account': return accountForm;
       case 'product': return productForm;
       case 'order': return orderForm;
-      case 'promotion': return promoForm;
+      case 'gst': return gstForm;
       case 'system': return systemForm;
       default: return accountForm;
     }
@@ -69,7 +83,7 @@ export const useNotificationForms = () => {
       case 'account': setAccountForm(form); break;
       case 'product': setProductForm(form); break;
       case 'order': setOrderForm(form); break;
-      case 'promotion': setPromoForm(form); break;
+      case 'gst': setGstForm(form); break;
       case 'system': setSystemForm(form); break;
     }
   };
@@ -79,14 +93,14 @@ export const useNotificationForms = () => {
       account: accountForm,
       product: productForm,
       order: orderForm,
-      promotion: promoForm,
+      gst: gstForm,
       system: systemForm,
     },
     setters: {
       setAccountForm,
       setProductForm,
       setOrderForm,
-      setPromoForm,
+      setGstForm,
       setSystemForm,
     },
     resetForm,

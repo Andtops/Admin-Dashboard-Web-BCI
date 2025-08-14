@@ -1,6 +1,5 @@
 "use client";
 
-import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -8,13 +7,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
 } from "@/components/ui/table";
 import {
   DropdownMenu,
@@ -24,149 +23,58 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { 
-  Search, 
-  Filter, 
-  MoreHorizontal, 
-  Eye, 
-  Trash2, 
+import {
+  Search,
+  Filter,
+  MoreHorizontal,
+  Eye,
+  Trash2,
   CheckCircle,
   Archive,
   RefreshCw,
-  Download
+  Download,
+  RotateCcw
 } from "lucide-react";
-import { useNotificationContext } from "@/contexts/notification-context";
-import { useQuery } from "convex/react";
-import { api } from "../../../../convex/_generated/api";
-import { toast } from "sonner";
-import { 
-  NOTIFICATION_TYPES, 
-  PRIORITY_CONFIG, 
-  NotificationType, 
-  NotificationPriority,
+import {
+  NOTIFICATION_TYPES,
+  PRIORITY_CONFIG,
   getNotificationIcon,
   formatNotificationType
 } from "@/lib/notification-constants";
+import type { NotificationType, NotificationPriority } from "@/types/notifications";
+import { useNotificationManagement } from "@/hooks/use-notification-management";
+import { Notification } from "@/types/notifications";
+import { NotificationDetailDialog } from "./notification-detail-dialog";
+import { useState, useCallback } from "react";
 
-interface NotificationFilters {
-  search: string;
-  type: string;
-  priority: string;
-  status: string;
-  dateRange: string;
-}
+// Constants for better maintainability
+const EMPTY_STATE_ICON_SIZE = "h-12 w-12";
 
 export function NotificationManagement() {
-  const { markAsRead, deleteNotification, markAllAsRead } = useNotificationContext();
-  const [filters, setFilters] = useState<NotificationFilters>({
-    search: "",
-    type: "all",
-    priority: "all",
-    status: "all",
-    dateRange: "all",
-  });
-  const [selectedNotifications, setSelectedNotifications] = useState<Set<string>>(new Set());
-  const [isLoading, setIsLoading] = useState(false);
+  const {
+    notifications: filteredNotifications,
+    stats,
+    isLoading,
+    filters,
+    updateFilter,
+    resetFilters,
+    selectedNotifications,
+    selectNotification,
+    selectAll,
+    handleSingleAction,
+    handleBulkAction,
+  } = useNotificationManagement();
 
-  // Query notifications with filters
-  const notifications = useQuery(api.notifications.getNotifications, {
-    search: filters.search || undefined,
-    type: filters.type === "all" ? undefined : filters.type as NotificationType,
-    priority: filters.priority === "all" ? undefined : filters.priority as NotificationPriority,
-    status: filters.status === "all" ? undefined : filters.status,
-    limit: 50,
-  });
+  // Detail dialog state
+  const [selectedNotification, setSelectedNotification] = useState<Notification | null>(null);
+  const [showDetailDialog, setShowDetailDialog] = useState(false);
 
-  // Memoized filtered notifications for better performance
-  const filteredNotifications = useMemo(() => {
-    if (!notifications) return [];
-    
-    return notifications.filter(notification => {
-      const matchesSearch = !filters.search || 
-        notification.title.toLowerCase().includes(filters.search.toLowerCase()) ||
-        notification.message.toLowerCase().includes(filters.search.toLowerCase());
-      
-      return matchesSearch;
-    });
-  }, [notifications, filters.search]);
+  const openDetailDialog = useCallback((notification: Notification) => {
+    setSelectedNotification(notification);
+    setShowDetailDialog(true);
+  }, []);
 
-  const handleFilterChange = (key: keyof NotificationFilters, value: string) => {
-    setFilters(prev => ({ ...prev, [key]: value }));
-  };
-
-  const handleSelectNotification = (notificationId: string, checked: boolean) => {
-    setSelectedNotifications(prev => {
-      const newSet = new Set(prev);
-      if (checked) {
-        newSet.add(notificationId);
-      } else {
-        newSet.delete(notificationId);
-      }
-      return newSet;
-    });
-  };
-
-  const handleSelectAll = (checked: boolean) => {
-    if (checked) {
-      setSelectedNotifications(new Set(filteredNotifications.map(n => n._id)));
-    } else {
-      setSelectedNotifications(new Set());
-    }
-  };
-
-  const handleBulkAction = async (action: "markRead" | "delete" | "archive") => {
-    if (selectedNotifications.size === 0) {
-      toast.error("Please select notifications first");
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      const promises = Array.from(selectedNotifications).map(id => {
-        switch (action) {
-          case "markRead":
-            return markAsRead(id);
-          case "delete":
-            return deleteNotification(id);
-          case "archive":
-            // Implement archive functionality
-            return Promise.resolve();
-          default:
-            return Promise.resolve();
-        }
-      });
-
-      await Promise.all(promises);
-      
-      const actionText = action === "markRead" ? "marked as read" : 
-                        action === "delete" ? "deleted" : "archived";
-      
-      toast.success(`${selectedNotifications.size} notifications ${actionText}`);
-      setSelectedNotifications(new Set());
-    } catch (error) {
-      console.error(`Failed to ${action} notifications:`, error);
-      toast.error(`Failed to ${action} notifications`);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleSingleAction = async (notificationId: string, action: "markRead" | "delete") => {
-    try {
-      if (action === "markRead") {
-        await markAsRead(notificationId);
-        toast.success("Notification marked as read");
-      } else if (action === "delete") {
-        await deleteNotification(notificationId);
-        toast.success("Notification deleted");
-      }
-    } catch (error) {
-      console.error(`Failed to ${action} notification:`, error);
-      toast.error(`Failed to ${action} notification`);
-    }
-  };
-
-  const formatDate = (timestamp: number) => {
+  const formatDate = useCallback((timestamp: number) => {
     return new Date(timestamp).toLocaleDateString("en-US", {
       year: "numeric",
       month: "short",
@@ -174,9 +82,12 @@ export function NotificationManagement() {
       hour: "2-digit",
       minute: "2-digit",
     });
-  };
+  }, []);
 
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = useCallback((notification: Notification) => {
+    // Use explicit status if available, otherwise derive from readAt
+    const status = notification.status || (notification.readAt ? "read" : "unread");
+
     switch (status) {
       case "read":
         return <Badge variant="outline" className="text-gray-600">Read</Badge>;
@@ -187,7 +98,7 @@ export function NotificationManagement() {
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
-  };
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -209,7 +120,7 @@ export function NotificationManagement() {
                   id="search"
                   placeholder="Search notifications..."
                   value={filters.search}
-                  onChange={(e) => handleFilterChange("search", e.target.value)}
+                  onChange={(e) => updateFilter("search", e.target.value)}
                   className="pl-10"
                 />
               </div>
@@ -217,7 +128,7 @@ export function NotificationManagement() {
 
             <div className="space-y-2">
               <Label htmlFor="type-filter">Type</Label>
-              <Select value={filters.type} onValueChange={(value) => handleFilterChange("type", value)}>
+              <Select value={filters.type} onValueChange={(value) => updateFilter("type", value)}>
                 <SelectTrigger>
                   <SelectValue placeholder="All Types" />
                 </SelectTrigger>
@@ -237,7 +148,7 @@ export function NotificationManagement() {
 
             <div className="space-y-2">
               <Label htmlFor="priority-filter">Priority</Label>
-              <Select value={filters.priority} onValueChange={(value) => handleFilterChange("priority", value)}>
+              <Select value={filters.priority} onValueChange={(value) => updateFilter("priority", value)}>
                 <SelectTrigger>
                   <SelectValue placeholder="All Priorities" />
                 </SelectTrigger>
@@ -257,7 +168,7 @@ export function NotificationManagement() {
 
             <div className="space-y-2">
               <Label htmlFor="status-filter">Status</Label>
-              <Select value={filters.status} onValueChange={(value) => handleFilterChange("status", value)}>
+              <Select value={filters.status} onValueChange={(value) => updateFilter("status", value)}>
                 <SelectTrigger>
                   <SelectValue placeholder="All Status" />
                 </SelectTrigger>
@@ -272,7 +183,7 @@ export function NotificationManagement() {
 
             <div className="space-y-2">
               <Label htmlFor="date-filter">Date Range</Label>
-              <Select value={filters.dateRange} onValueChange={(value) => handleFilterChange("dateRange", value)}>
+              <Select value={filters.dateRange} onValueChange={(value) => updateFilter("dateRange", value)}>
                 <SelectTrigger>
                   <SelectValue placeholder="All Time" />
                 </SelectTrigger>
@@ -283,6 +194,22 @@ export function NotificationManagement() {
                   <SelectItem value="month">This Month</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+          </div>
+
+          {/* Filter Actions */}
+          <div className="flex items-center gap-2 mt-4">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={resetFilters}
+              className="flex items-center gap-2"
+            >
+              <RotateCcw className="h-4 w-4" />
+              Reset Filters
+            </Button>
+            <div className="text-sm text-muted-foreground">
+              {stats.total} total • {stats.unread} unread • {stats.read} read
             </div>
           </div>
         </CardContent>
@@ -346,11 +273,29 @@ export function NotificationManagement() {
               </CardDescription>
             </div>
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  // TODO: Implement export functionality
+                  console.log('Export notifications');
+                }}
+              >
                 <Download className="h-4 w-4 mr-2" />
                 Export
               </Button>
-              <Button variant="outline" size="sm">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  try {
+                    window.location.reload();
+                  } catch (error) {
+                    console.error('Failed to refresh page:', error);
+                  }
+                }}
+                disabled={isLoading}
+              >
                 <RefreshCw className="h-4 w-4 mr-2" />
                 Refresh
               </Button>
@@ -365,7 +310,8 @@ export function NotificationManagement() {
                   <TableHead className="w-12">
                     <Checkbox
                       checked={selectedNotifications.size === filteredNotifications.length && filteredNotifications.length > 0}
-                      onCheckedChange={handleSelectAll}
+                      onCheckedChange={selectAll}
+                      aria-label="Select all notifications"
                     />
                   </TableHead>
                   <TableHead>Notification</TableHead>
@@ -384,8 +330,8 @@ export function NotificationManagement() {
                       <TableCell>
                         <Checkbox
                           checked={selectedNotifications.has(notification._id)}
-                          onCheckedChange={(checked) => 
-                            handleSelectNotification(notification._id, checked as boolean)
+                          onCheckedChange={(checked) =>
+                            selectNotification(notification._id, checked as boolean)
                           }
                         />
                       </TableCell>
@@ -410,14 +356,14 @@ export function NotificationManagement() {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <Badge 
+                        <Badge
                           className={`text-xs text-white ${PRIORITY_CONFIG[notification.priority as NotificationPriority]?.color || PRIORITY_CONFIG.medium.color}`}
                         >
                           {PRIORITY_CONFIG[notification.priority as NotificationPriority]?.label || "Medium"}
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        {getStatusBadge(notification.status || "unread")}
+                        {getStatusBadge(notification)}
                       </TableCell>
                       <TableCell>
                         <div className="text-sm">
@@ -433,20 +379,24 @@ export function NotificationManagement() {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            <DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => openDetailDialog(notification)}>
                               <Eye className="mr-2 h-4 w-4" />
                               View Details
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            {notification.status !== "read" && (
+                            {!notification.readAt && (
                               <DropdownMenuItem
                                 onClick={() => handleSingleAction(notification._id, "markRead")}
+                                disabled={isLoading}
                               >
                                 <CheckCircle className="mr-2 h-4 w-4" />
                                 Mark as Read
                               </DropdownMenuItem>
                             )}
-                            <DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => handleSingleAction(notification._id, "archive")}
+                              disabled={isLoading}
+                            >
                               <Archive className="mr-2 h-4 w-4" />
                               Archive
                             </DropdownMenuItem>
@@ -454,6 +404,7 @@ export function NotificationManagement() {
                             <DropdownMenuItem
                               onClick={() => handleSingleAction(notification._id, "delete")}
                               className="text-red-600"
+                              disabled={isLoading}
                             >
                               <Trash2 className="mr-2 h-4 w-4" />
                               Delete
@@ -470,12 +421,29 @@ export function NotificationManagement() {
 
           {filteredNotifications.length === 0 && (
             <div className="text-center py-8 text-muted-foreground">
-              <Filter className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <Filter className={`${EMPTY_STATE_ICON_SIZE} mx-auto mb-4 opacity-50`} />
               <p>No notifications found matching your filters</p>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={resetFilters}
+                className="mt-4"
+              >
+                Clear Filters
+              </Button>
             </div>
           )}
         </CardContent>
       </Card>
+
+      {/* Notification Detail Dialog */}
+      <NotificationDetailDialog
+        notification={selectedNotification}
+        open={showDetailDialog}
+        onOpenChange={setShowDetailDialog}
+        onMarkAsRead={(id) => handleSingleAction(id, "markRead")}
+        onDelete={(id) => handleSingleAction(id, "delete")}
+      />
     </div>
   );
 }

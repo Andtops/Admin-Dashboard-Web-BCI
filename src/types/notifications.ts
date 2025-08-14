@@ -3,6 +3,22 @@
  * Centralized types for better type safety across the notification system
  */
 
+// Define types directly to avoid circular dependencies
+export type NotificationType = 
+  | "user_registration"
+  | "user_approval" 
+  | "user_rejection"
+  | "order_notification"
+  | "product_update"
+  | "gst_verification"
+  | "system_alert";
+
+export type NotificationPriority = "urgent" | "high" | "medium" | "low";
+
+export type RecipientType = "admin" | "user" | "all_admins" | "specific_user";
+
+export type NotificationStatus = "unread" | "read" | "archived";
+
 export interface NotificationStats {
   total: number;
   unread: number;
@@ -12,18 +28,9 @@ export interface NotificationStats {
     medium: number;
     low: number;
   };
-  byType: {
-    user_registration: number;
-    user_approval: number;
-    order_notification: number;
-    product_update: number;
-    system_alert: number;
-    gst_verification: number;
-    email_notification: number;
-    admin_action: number;
-  };
+  byType: Record<NotificationType, number>;
   recentNotifications: number;
-  deliveryStats: {
+  deliveryStats?: {
     successful: number;
     failed: number;
     pending: number;
@@ -36,16 +43,19 @@ export interface Notification {
   title: string;
   message: string;
   priority: NotificationPriority;
-  status: NotificationStatus;
+  status?: NotificationStatus; // Made optional to match Convex data structure
   recipientType: RecipientType;
-  recipientId?: string;
+  recipientId?: string; // Made optional to match Convex data structure
   metadata?: Record<string, any>;
   createdAt: number;
-  updatedAt: number;
+  updatedAt?: number;
   readAt?: number;
   deliveredAt?: number;
   failedAt?: number;
   errorMessage?: string;
+  // Additional useful properties
+  actionUrl?: string;
+  expiresAt?: number;
 }
 
 export interface NotificationCreateRequest {
@@ -61,10 +71,11 @@ export interface NotificationCreateRequest {
 
 export interface NotificationFilters {
   search?: string;
-  type?: NotificationType;
-  priority?: NotificationPriority;
-  status?: NotificationStatus;
+  type?: NotificationType | "all";
+  priority?: NotificationPriority | "all";
+  status?: NotificationStatus | "all";
   recipientType?: RecipientType;
+  dateRange?: "all" | "today" | "week" | "month";
   dateFrom?: number;
   dateTo?: number;
   limit?: number;
@@ -90,14 +101,6 @@ export interface NotificationSettings {
     low: boolean;
   };
 }
-
-// Re-export types from constants for convenience
-export type {
-  NotificationType,
-  NotificationPriority,
-  RecipientType,
-  NotificationStatus
-} from "@/lib/notification-constants";
 
 // Error types
 export interface NotificationError {
@@ -127,3 +130,22 @@ export interface BulkOperationResult {
     error: string;
   }>;
 }
+
+// Action types
+export type NotificationAction = "markRead" | "delete" | "archive";
+
+// Legacy alias for backward compatibility
+export interface BulkActionResult {
+  success: number;
+  failed: number;
+  errors: string[];
+}
+
+// Utility functions
+export const getNotificationStatus = (notification: Notification): NotificationStatus => {
+  // Use explicit status if available, otherwise derive from readAt
+  if (notification.status) {
+    return notification.status;
+  }
+  return notification.readAt ? "read" : "unread";
+};

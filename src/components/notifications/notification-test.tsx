@@ -21,11 +21,10 @@ import { toast } from "sonner";
 import { 
   NOTIFICATION_TYPES, 
   PRIORITY_CONFIG, 
-  NotificationType, 
-  NotificationPriority,
   getNotificationIcon as getIconFromConstants,
   formatNotificationType
 } from "@/lib/notification-constants";
+import type { NotificationType, NotificationPriority } from "@/types/notifications";
 
 interface TestNotification {
   type: NotificationType;

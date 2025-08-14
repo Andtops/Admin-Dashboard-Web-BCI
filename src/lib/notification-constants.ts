@@ -16,47 +16,64 @@ import {
   Shield
 } from "lucide-react";
 
-// Notification Types
+// Import types from the types file to avoid circular dependencies
+import type { NotificationType, NotificationPriority, RecipientType, NotificationStatus } from "@/types/notifications";
+
+// Notification Types with improved organization and consistency
 export const NOTIFICATION_TYPES = {
+  // User-related notifications
   user_registration: { 
     label: "User Registration", 
     icon: User,
-    description: "New user account registrations"
+    description: "New user account registrations",
+    category: "user",
+    defaultPriority: "medium" as const
   },
   user_approval: { 
     label: "User Approval", 
     icon: CheckCircle,
-    description: "User account approvals and rejections"
+    description: "User account approvals",
+    category: "user",
+    defaultPriority: "high" as const
   },
+  user_rejection: { 
+    label: "User Rejection", 
+    icon: User, // Consider using UserX for better visual distinction
+    description: "User account rejections",
+    category: "user",
+    defaultPriority: "high" as const
+  },
+  
+  // Business-related notifications
   order_notification: { 
     label: "Order Notification", 
     icon: ShoppingBag,
-    description: "New orders and quotation requests"
+    description: "New orders and quotation requests",
+    category: "business",
+    defaultPriority: "high" as const
   },
   product_update: { 
     label: "Product Update", 
     icon: Package,
-    description: "Product information changes"
-  },
-  system_alert: { 
-    label: "System Alert", 
-    icon: AlertTriangle,
-    description: "System warnings and alerts"
+    description: "Product information changes",
+    category: "business",
+    defaultPriority: "medium" as const
   },
   gst_verification: { 
     label: "GST Verification", 
     icon: Shield,
-    description: "GST verification status updates"
+    description: "GST verification status updates",
+    category: "business",
+    defaultPriority: "medium" as const
   },
-  email_notification: { 
-    label: "Email Notification", 
-    icon: Mail,
-    description: "Email delivery status"
-  },
-  admin_action: { 
-    label: "Admin Action", 
-    icon: Settings,
-    description: "Administrative actions and updates"
+  
+  // System notifications
+  system_alert: { 
+    label: "System Alert", 
+    icon: AlertTriangle,
+    description: "System warnings and alerts",
+    category: "system",
+    defaultPriority: "urgent" as const
   },
 } as const;
 
@@ -94,9 +111,10 @@ export const PRIORITY_CONFIG = {
 
 // Recipient Types
 export const RECIPIENT_TYPES = {
+  admin: { label: "Admin", description: "Send to admin users" },
+  user: { label: "User", description: "Send to regular users" },
   all_admins: { label: "All Admins", description: "Send to all admin users" },
-  specific_admin: { label: "Specific Admin", description: "Send to a specific admin" },
-  role_based: { label: "Role Based", description: "Send based on admin role" },
+  specific_user: { label: "Specific User", description: "Send to a specific user" },
 } as const;
 
 // Notification Status
@@ -114,9 +132,20 @@ export const DEFAULT_NOTIFICATION_SETTINGS = {
   autoMarkAsRead: false,
   notificationSound: true,
   maxNotificationsToShow: 50,
-} as const;
+  quietHours: {
+    enabled: false,
+    startTime: "22:00",
+    endTime: "08:00",
+  },
+  priorityFilters: {
+    urgent: true,
+    high: true,
+    medium: true,
+    low: true,
+  },
+};
 
-// Notification templates for testing
+// Notification templates for testing and consistency
 export const NOTIFICATION_TEMPLATES = {
   user_registration: [
     {
@@ -125,8 +154,22 @@ export const NOTIFICATION_TEMPLATES = {
       priority: "medium" as const,
     },
     {
-      title: "Bulk Registration Alert",
+      title: "Bulk Registration Alert", 
       message: "{{count}} new users have registered in the last hour",
+      priority: "high" as const,
+    },
+  ],
+  user_approval: [
+    {
+      title: "User Account Approved",
+      message: "{{userName}}'s account has been approved successfully",
+      priority: "high" as const,
+    },
+  ],
+  user_rejection: [
+    {
+      title: "User Account Rejected",
+      message: "{{userName}}'s account has been rejected: {{reason}}",
       priority: "high" as const,
     },
   ],
@@ -156,11 +199,24 @@ export const NOTIFICATION_TEMPLATES = {
   ],
 } as const;
 
-// Type definitions
-export type NotificationType = keyof typeof NOTIFICATION_TYPES;
-export type NotificationPriority = keyof typeof PRIORITY_CONFIG;
-export type RecipientType = keyof typeof RECIPIENT_TYPES;
-export type NotificationStatus = keyof typeof NOTIFICATION_STATUS;
+// Category groupings for better organization
+export const NOTIFICATION_CATEGORIES = {
+  user: {
+    label: "User Management",
+    description: "User registration, approval, and account management",
+    types: ["user_registration", "user_approval", "user_rejection"] as const
+  },
+  business: {
+    label: "Business Operations", 
+    description: "Orders, products, and business-related activities",
+    types: ["order_notification", "product_update", "gst_verification"] as const
+  },
+  system: {
+    label: "System & Admin",
+    description: "System alerts and administrative actions", 
+    types: ["system_alert"] as const
+  }
+} as const;
 
 // Utility functions
 export const getNotificationIcon = (type: NotificationType) => {
@@ -171,10 +227,30 @@ export const getPriorityConfig = (priority: NotificationPriority) => {
   return PRIORITY_CONFIG[priority] || PRIORITY_CONFIG.medium;
 };
 
+export const getDefaultPriority = (type: NotificationType): NotificationPriority => {
+  return NOTIFICATION_TYPES[type]?.defaultPriority || "medium";
+};
+
+export const getNotificationCategory = (type: NotificationType) => {
+  return NOTIFICATION_TYPES[type]?.category || "system";
+};
+
+export const getNotificationsByCategory = (category: keyof typeof NOTIFICATION_CATEGORIES) => {
+  return NOTIFICATION_CATEGORIES[category].types.map(type => ({
+    type,
+    ...NOTIFICATION_TYPES[type]
+  }));
+};
+
 export const formatNotificationType = (type: string) => {
   return type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
 };
 
 export const getNotificationTypeDescription = (type: NotificationType) => {
   return NOTIFICATION_TYPES[type]?.description || "General notification";
+};
+
+export const isHighPriorityNotification = (type: NotificationType) => {
+  const priority = getDefaultPriority(type);
+  return priority === "urgent" || priority === "high";
 };

@@ -17,9 +17,9 @@ import { toast } from "sonner";
 import { 
   NOTIFICATION_TYPES, 
   PRIORITY_CONFIG, 
-  NotificationType,
   getNotificationIcon as getIconFromConstants
 } from "@/lib/notification-constants";
+import type { NotificationType } from "@/types/notifications";
 
 export function NotificationDropdown() {
   const router = useRouter();

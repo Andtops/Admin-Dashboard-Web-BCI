@@ -22,9 +22,52 @@ This project uses [`next/font`](https://nextjs.org/docs/app/building-your-applic
 
 ## Project Architecture
 
+### User Management System
+
+The user management system has been refactored with modern React patterns, improved code organization, and enhanced maintainability:
+
+#### 🏗️ Architecture Overview
+
+The user management system follows a modular, scalable architecture with clear separation of concerns:
+
+```
+src/
+├── app/dashboard/users/                  # Main user management page
+├── components/users/                     # User-specific UI components
+│   ├── users-table.tsx                  # Reusable user table component
+│   └── user-action-dialogs.tsx         # Approval/rejection dialogs
+├── hooks/use-user-actions.ts            # User action logic (approve/reject)
+├── utils/user-utils.ts                  # User utility functions
+└── types/                               # TypeScript definitions
+```
+
+#### 🎯 Key Improvements
+
+- **Separation of Concerns**: Business logic extracted into custom hooks
+- **Reusable Components**: Modular dialog and table components
+- **Type Safety**: Comprehensive TypeScript coverage
+- **Error Handling**: Robust error handling with user feedback
+- **Performance**: Optimized rendering and state management
+- **Accessibility**: ARIA labels and keyboard navigation support
+
+#### 🧩 Core Components
+
+- **UsersTable** (`/components/users/users-table.tsx`): Reusable table component with actions
+- **UserActionDialogs** (`/components/users/user-action-dialogs.tsx`): Approval and rejection dialogs
+- **useUserActions** (`/hooks/use-user-actions.ts`): Custom hook for user approval/rejection logic
+- **User Utils** (`/utils/user-utils.ts`): Utility functions for formatting and validation
+
+#### 🔧 Benefits
+
+- **Maintainability**: Clean separation of UI and business logic
+- **Reusability**: Components can be easily reused across the application
+- **Testability**: Isolated logic makes unit testing straightforward
+- **Performance**: Reduced bundle size and optimized re-renders
+- **Developer Experience**: Clear APIs and comprehensive TypeScript support
+
 ### Notification System
 
-The notification system has been completely redesigned with modern React patterns, comprehensive type safety, and enhanced user experience:
+The notification system has been completely redesigned with modern React patterns, comprehensive type safety, and enhanced user experience. **Recently optimized** to eliminate code duplication and improve maintainability:
 
 #### 🏗️ Architecture Overview
 
@@ -35,11 +78,20 @@ src/
 ├── app/dashboard/notifications/          # Main notification pages
 ├── components/notifications/             # Notification UI components
 ├── contexts/notification-context.tsx    # Global notification state
-├── hooks/use-notification-settings.ts   # Settings management
-├── lib/notification-constants.ts        # Centralized constants
-├── lib/notification-utils.ts           # Utility functions
+├── hooks/use-notifications.ts           # Centralized notification logic
+├── lib/notification-constants.ts        # **CENTRALIZED** constants & types
+├── lib/notification-service.ts          # Real-time notification service
 └── types/notifications.ts              # TypeScript definitions
 ```
+
+#### 🔧 Recent Optimizations (Latest Update)
+
+- **Eliminated Code Duplication**: Removed duplicate constants across multiple files
+- **Centralized Configuration**: All notification types, priorities, and settings in one place
+- **Enhanced Type Safety**: Improved TypeScript coverage with proper type exports
+- **Category Organization**: Notifications grouped by category (user, business, system)
+- **Performance Improvements**: Added `useCallback` hooks and optimized re-renders
+- **Consistent Icon System**: Unified icon handling across all components
 
 #### 🎯 Key Features
 

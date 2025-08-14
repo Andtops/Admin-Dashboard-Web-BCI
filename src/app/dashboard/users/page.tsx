@@ -1,21 +1,26 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { ProtectedRoute } from "@/components/auth/protected-route";
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@/components/ui/table";
 import {
   DropdownMenu,
@@ -26,12 +31,21 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  Search,
+  UserCheck,
+  UserX,
+  Eye,
+  Download,
+  RefreshCw,
+  MoreHorizontal
+} from "lucide-react";
+import { useQuery, useMutation } from "convex/react";
+import { api } from "../../../../convex/_generated/api";
+import { useAuth } from "@/contexts/auth-context";
+import { toast } from "sonner";
+
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
@@ -40,35 +54,40 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  DetailDialog,
-  DetailSection,
-  DetailField,
-} from "@/components/ui/enhanced-dialog";
-import {
-  Search,
-  Filter,
-  MoreHorizontal,
-  UserCheck,
-  UserX,
-  Eye,
-  Download,
-  RefreshCw,
-  Building,
-  Mail,
-  Phone,
-  MapPin,
-  Globe,
-  Calendar
-} from "lucide-react";
-import { useQuery, useMutation } from "convex/react";
-import { api } from "../../../../convex/_generated/api";
-import { useAuth } from "@/contexts/auth-context";
-import { toast } from "sonner";
+import { useUserNotifications } from "@/hooks/useUserNotifications";
+
+// Types
+interface User {
+  _id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone?: string;
+  businessName?: string;
+  gstNumber?: string;
+  isGstVerified?: boolean;
+  status: "pending" | "approved" | "rejected" | "suspended";
+  createdAt: number;
+  updatedAt: number;
+  emailVerified?: boolean;
+  legalNameOfBusiness?: string;
+  tradeName?: string;
+  businessType?: string;
+  industryType?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  pincode?: string;
+  country?: string;
+  website?: string;
+  description?: string;
+  socialMediaLinks?: Record<string, string>;
+  dateOfBirth?: number;
+}
 
 export default function UsersPage() {
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(0);
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
@@ -80,15 +99,22 @@ export default function UsersPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const pageSize = 20;
 
+  // Auth context
   const { admin } = useAuth();
 
-  // Queries
-  const users = useQuery(api.users.getUsers, {
+  // Custom hooks
+  const { sendApprovalNotifications, sendRejectionNotifications, showNotificationResult } = useUserNotifications();
+
+  // Memoized query parameters to prevent unnecessary re-renders
+  const queryParams = useMemo(() => ({
     search: searchTerm || undefined,
     status: statusFilter === "all" ? undefined : statusFilter as any,
     limit: pageSize,
     offset: currentPage * pageSize,
-  });
+  }), [searchTerm, statusFilter, currentPage, pageSize]);
+
+  // Queries
+  const users = useQuery(api.users.getUsers, queryParams);
 
   const userStats = useQuery(api.users.getUserStats);
 
@@ -97,11 +123,50 @@ export default function UsersPage() {
   const rejectUser = useMutation(api.users.rejectUser);
   const getOrCreateAdmin = useMutation(api.admins.getOrCreateAdmin);
 
-  const openApprovalDialog = (user: any) => {
+  // Utility functions
+  const getStatusBadge = useCallback((status: string) => {
+    switch (status) {
+      case "approved":
+        return <Badge variant="default" className="bg-green-500">Approved</Badge>;
+      case "pending":
+        return <Badge variant="secondary">Pending</Badge>;
+      case "rejected":
+        return <Badge variant="destructive">Rejected</Badge>;
+      case "suspended":
+        return <Badge variant="outline" className="border-orange-500 text-orange-500">Suspended</Badge>;
+      default:
+        return <Badge variant="outline">{status}</Badge>;
+    }
+  }, []);
+
+  const formatDate = useCallback((timestamp: number) => {
+    return new Date(timestamp).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  }, []);
+
+  // Dialog handlers
+  const openApprovalDialog = useCallback((user: User) => {
     setSelectedUser(user);
     setApprovalMessage("");
     setShowApprovalDialog(true);
-  };
+  }, []);
+
+  const openRejectionDialog = useCallback((user: User) => {
+    setSelectedUser(user);
+    setRejectionReason("");
+    setRejectionMessage("");
+    setShowRejectionDialog(true);
+  }, []);
+
+  const openDetailsDialog = useCallback((user: User) => {
+    setSelectedUser(user);
+    setShowDetailsDialog(true);
+  }, []);
 
   const handleApproveUser = async () => {
     if (!admin || !selectedUser) return;
@@ -118,73 +183,19 @@ export default function UsersPage() {
         customMessage: approvalMessage || undefined,
       });
 
-      // Send approval email and push notification
-      let emailSuccess = false;
-      let pushSuccess = false;
+      // Send notifications using custom hook
+      const notificationResult = await sendApprovalNotifications(selectedUser._id, {
+        userEmail: selectedUser.email,
+        userName: `${selectedUser.firstName} ${selectedUser.lastName}`,
+        customMessage: approvalMessage || undefined,
+        businessInfo: {
+          businessName: selectedUser.businessName,
+          gstNumber: selectedUser.gstNumber,
+          isGstVerified: selectedUser.isGstVerified,
+        },
+      });
 
-      try {
-        const emailResponse = await fetch('/api/gmail-api', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            type: 'approval',
-            userEmail: selectedUser.email,
-            userName: `${selectedUser.firstName} ${selectedUser.lastName}`,
-            customMessage: approvalMessage || undefined,
-            businessInfo: {
-              businessName: selectedUser.businessName,
-              gstNumber: selectedUser.gstNumber,
-              isGstVerified: selectedUser.isGstVerified,
-            },
-          }),
-        });
-
-        const emailResult = await emailResponse.json();
-        emailSuccess = emailResult.success;
-        
-        if (!emailSuccess) {
-          console.warn("Email sending failed:", emailResult.error);
-        }
-      } catch (emailError) {
-        console.error("Email sending error:", emailError);
-      }
-
-      // Send push notification
-      try {
-        const pushResponse = await fetch('/api/notifications/enhanced/send', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            type: 'account_approval',
-            userId: selectedUser._id,
-            userEmail: selectedUser.email,
-            userName: `${selectedUser.firstName} ${selectedUser.lastName}`,
-            customMessage: approvalMessage || undefined,
-          }),
-        });
-
-        const pushResult = await pushResponse.json();
-        pushSuccess = pushResult.success;
-        
-        if (!pushSuccess) {
-          console.warn("Push notification failed:", pushResult.error);
-        }
-      } catch (pushError) {
-        console.error("Push notification error:", pushError);
-      }
-
-      // Show appropriate success message
-      if (emailSuccess && pushSuccess) {
-        toast.success("User approved! Email and push notifications sent successfully");
-      } else if (emailSuccess || pushSuccess) {
-        toast.success(`User approved! ${emailSuccess ? 'Email' : 'Push notification'} sent successfully`);
-      } else {
-        toast.success("User approved successfully, but notifications failed");
-      }
+      showNotificationResult(notificationResult, 'approved');
 
       setShowApprovalDialog(false);
       setSelectedUser(null);
@@ -195,13 +206,6 @@ export default function UsersPage() {
     } finally {
       setIsProcessing(false);
     }
-  };
-
-  const openRejectionDialog = (user: any) => {
-    setSelectedUser(user);
-    setRejectionReason("");
-    setRejectionMessage("");
-    setShowRejectionDialog(true);
   };
 
   const handleRejectUser = async () => {
@@ -223,72 +227,18 @@ export default function UsersPage() {
         customMessage: rejectionMessage || undefined,
       });
 
-      // Send rejection email and push notification
-      let emailSuccess = false;
-      let pushSuccess = false;
+      // Send notifications using custom hook
+      const notificationResult = await sendRejectionNotifications(selectedUser._id, {
+        userEmail: selectedUser.email,
+        userName: `${selectedUser.firstName} ${selectedUser.lastName}`,
+        rejectionReason: rejectionReason,
+        businessInfo: {
+          businessName: selectedUser.businessName,
+          gstNumber: selectedUser.gstNumber,
+        },
+      });
 
-      try {
-        const emailResponse = await fetch('/api/gmail-api', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            type: 'rejection',
-            userEmail: selectedUser.email,
-            userName: `${selectedUser.firstName} ${selectedUser.lastName}`,
-            rejectionReason: rejectionReason,
-            businessInfo: {
-              businessName: selectedUser.businessName,
-              gstNumber: selectedUser.gstNumber,
-            },
-          }),
-        });
-
-        const emailResult = await emailResponse.json();
-        emailSuccess = emailResult.success;
-        
-        if (!emailSuccess) {
-          console.warn("Email sending failed:", emailResult.error);
-        }
-      } catch (emailError) {
-        console.error("Email sending error:", emailError);
-      }
-
-      // Send push notification
-      try {
-        const pushResponse = await fetch('/api/notifications/enhanced/send', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            type: 'account_rejection',
-            userId: selectedUser._id,
-            userEmail: selectedUser.email,
-            userName: `${selectedUser.firstName} ${selectedUser.lastName}`,
-            rejectionReason: rejectionReason,
-          }),
-        });
-
-        const pushResult = await pushResponse.json();
-        pushSuccess = pushResult.success;
-        
-        if (!pushSuccess) {
-          console.warn("Push notification failed:", pushResult.error);
-        }
-      } catch (pushError) {
-        console.error("Push notification error:", pushError);
-      }
-
-      // Show appropriate success message
-      if (emailSuccess && pushSuccess) {
-        toast.success("User rejected! Email and push notifications sent successfully");
-      } else if (emailSuccess || pushSuccess) {
-        toast.success(`User rejected! ${emailSuccess ? 'Email' : 'Push notification'} sent successfully`);
-      } else {
-        toast.success("User rejected successfully, but notifications failed");
-      }
+      showNotificationResult(notificationResult, 'rejected');
 
       setShowRejectionDialog(false);
       setSelectedUser(null);
@@ -302,38 +252,8 @@ export default function UsersPage() {
     }
   };
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "approved":
-        return <Badge variant="default" className="bg-green-500">Approved</Badge>;
-      case "pending":
-        return <Badge variant="secondary">Pending</Badge>;
-      case "rejected":
-        return <Badge variant="destructive">Rejected</Badge>;
-      case "suspended":
-        return <Badge variant="outline" className="border-orange-500 text-orange-500">Suspended</Badge>;
-      default:
-        return <Badge variant="outline">{status}</Badge>;
-    }
-  };
-
-  const formatDate = (timestamp: number) => {
-    return new Date(timestamp).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
-
-  const openDetailsDialog = (user: any) => {
-    setSelectedUser(user);
-    setShowDetailsDialog(true);
-  };
-
   return (
-    <ProtectedRoute requiredPermission="users.read">
+    <ProtectedRoute>
       <DashboardLayout>
         <div className="space-y-6">
           {/* Header */}
@@ -357,7 +277,7 @@ export default function UsersPage() {
           </div>
 
           {/* Stats Cards */}
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium">Total Users</CardTitle>
@@ -390,14 +310,6 @@ export default function UsersPage() {
                 <div className="text-2xl font-bold text-red-600">{userStats?.rejected || 0}</div>
               </CardContent>
             </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">GST Verified</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-blue-600">{(userStats as any)?.gstVerified || 0}</div>
-              </CardContent>
-            </Card>
           </div>
 
           {/* Filters */}
@@ -405,7 +317,7 @@ export default function UsersPage() {
             <CardHeader>
               <CardTitle>Users</CardTitle>
               <CardDescription>
-                Manage and monitor user accounts
+                Manage user accounts and registration status
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -438,63 +350,34 @@ export default function UsersPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>User</TableHead>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Email</TableHead>
                       <TableHead>Business</TableHead>
-                      <TableHead>GST</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Registered</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {users?.map((user) => (
+                    {users?.map((user: User) => (
                       <TableRow key={user._id}>
-                        <TableCell>
-                          <div>
-                            <div className="font-medium">
-                              {user.firstName} {user.lastName}
-                            </div>
-                            <div className="text-sm text-muted-foreground">
-                              {user.email}
-                            </div>
-                            {user.phone && (
-                              <div className="text-sm text-muted-foreground">
-                                {user.phone}
-                              </div>
-                            )}
-                          </div>
+                        <TableCell className="font-medium">
+                          {user.firstName} {user.lastName}
                         </TableCell>
+                        <TableCell>{user.email}</TableCell>
                         <TableCell>
-                          <div>
-                            {user.businessName && (
-                              <div className="font-medium">{user.businessName}</div>
-                            )}
-                            {user.legalNameOfBusiness && (
-                              <div className="text-sm text-muted-foreground">
-                                {user.legalNameOfBusiness}
-                              </div>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div>
-                            {user.gstNumber && (
-                              <div className="font-mono text-sm">{user.gstNumber}</div>
-                            )}
-                            {user.isGstVerified && (
-                              <Badge variant="outline" className="text-green-600 border-green-600">
-                                Verified
-                              </Badge>
-                            )}
-                          </div>
+                          {user.businessName || "N/A"}
+                          {user.gstNumber && (
+                            <div className="text-xs text-muted-foreground">
+                              GST: {user.gstNumber}
+                            </div>
+                          )}
                         </TableCell>
                         <TableCell>
                           {getStatusBadge(user.status)}
                         </TableCell>
                         <TableCell>
-                          <div className="text-sm">
-                            {formatDate(user.createdAt)}
-                          </div>
+                          {formatDate(user.createdAt)}
                         </TableCell>
                         <TableCell className="text-right">
                           <DropdownMenu>
@@ -512,19 +395,13 @@ export default function UsersPage() {
                               <DropdownMenuSeparator />
                               {user.status === "pending" && (
                                 <>
-                                  <DropdownMenuItem
-                                    onClick={() => openApprovalDialog(user)}
-                                    className="text-green-600"
-                                  >
+                                  <DropdownMenuItem onClick={() => openApprovalDialog(user)}>
                                     <UserCheck className="mr-2 h-4 w-4" />
-                                    Approve User
+                                    Approve
                                   </DropdownMenuItem>
-                                  <DropdownMenuItem
-                                    onClick={() => openRejectionDialog(user)}
-                                    className="text-red-600"
-                                  >
+                                  <DropdownMenuItem onClick={() => openRejectionDialog(user)}>
                                     <UserX className="mr-2 h-4 w-4" />
-                                    Reject User
+                                    Reject
                                   </DropdownMenuItem>
                                 </>
                               )}
@@ -540,7 +417,11 @@ export default function UsersPage() {
               {/* Pagination */}
               <div className="flex items-center justify-between mt-4">
                 <div className="text-sm text-muted-foreground">
-                  Showing {currentPage * pageSize + 1} to {Math.min((currentPage + 1) * pageSize, users?.length || 0)} of {users?.length || 0} users
+                  {users?.length ? (
+                    <>Showing {currentPage * pageSize + 1} to {Math.min((currentPage + 1) * pageSize, users.length)} of {users.length} users</>
+                  ) : (
+                    "No users found"
+                  )}
                 </div>
                 <div className="flex items-center gap-2">
                   <Button
@@ -563,337 +444,164 @@ export default function UsersPage() {
               </div>
             </CardContent>
           </Card>
-
-          {/* User Details Dialog */}
-          <DetailDialog
-            open={showDetailsDialog}
-            onOpenChange={setShowDetailsDialog}
-            title="User Details"
-            subtitle={`Complete information for ${selectedUser?.firstName} ${selectedUser?.lastName}`}
-            size="5xl"
-            actions={
-              <>
-                <Button variant="outline" onClick={() => setShowDetailsDialog(false)}>
-                  Close
-                </Button>
-                {selectedUser?.status === "pending" && (
-                  <div className="flex gap-2">
-                    <Button
-                      onClick={() => {
-                        setShowDetailsDialog(false);
-                        openApprovalDialog(selectedUser);
-                      }}
-                      className="bg-green-600 hover:bg-green-700"
-                    >
-                      <UserCheck className="h-4 w-4 mr-2" />
-                      Approve User
-                    </Button>
-                    <Button
-                      variant="destructive"
-                      onClick={() => {
-                        setShowDetailsDialog(false);
-                        openRejectionDialog(selectedUser);
-                      }}
-                    >
-                      <UserX className="h-4 w-4 mr-2" />
-                      Reject User
-                    </Button>
-                  </div>
-                )}
-              </>
-            }
-          >
-            <div className="space-y-8">
-                {/* Personal Information */}
-                <DetailSection title="Personal Information" columns={2}>
-                  <DetailField
-                    label="Full Name"
-                    value={`${selectedUser?.firstName} ${selectedUser?.lastName}`}
-                  />
-                  <DetailField
-                    label="Email"
-                    value={selectedUser?.email}
-                  />
-                  <DetailField
-                    label="Phone"
-                    value={selectedUser?.phone}
-                  />
-                  <DetailField
-                    label="Date of Birth"
-                    value={selectedUser?.dateOfBirth ? formatDate(selectedUser?.dateOfBirth) : undefined}
-                  />
-                  <DetailField
-                    label="Account Status"
-                    value={selectedUser && getStatusBadge(selectedUser.status)}
-                  />
-                  <DetailField
-                    label="Email Verified"
-                    value={
-                      selectedUser?.emailVerified ? (
-                        <Badge variant="outline" className="text-green-600 border-green-600">
-                          Verified
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline" className="text-orange-600 border-orange-600">
-                          Not Verified
-                        </Badge>
-                      )
-                    }
-                  />
-                </DetailSection>
-
-                {/* Business Information */}
-                <DetailSection title="Business Information" columns={2}>
-                  <DetailField
-                    label="Trade Name"
-                    value={selectedUser?.businessName}
-                  />
-                  <DetailField
-                    label="Legal Name of Business"
-                    value={selectedUser?.legalNameOfBusiness}
-                  />
-                  <DetailField
-                    label="Trade Name"
-                    value={selectedUser?.tradeName}
-                  />
-                  <DetailField
-                    label="Business Type"
-                    value={selectedUser?.businessType}
-                  />
-                  <DetailField
-                    label="Industry Type"
-                    value={selectedUser?.industryType}
-                  />
-                </DetailSection>
-
-
-
-                {/* Address Information */}
-                <DetailSection title="Address Information" columns={2}>
-                  <DetailField
-                    label="Address"
-                    value={selectedUser?.address}
-                  />
-                  <DetailField
-                    label="City"
-                    value={selectedUser?.city}
-                  />
-                  <DetailField
-                    label="State"
-                    value={selectedUser?.state}
-                  />
-                  <DetailField
-                    label="Pincode"
-                    value={selectedUser?.pincode}
-                  />
-                  <DetailField
-                    label="Country"
-                    value={selectedUser?.country}
-                  />
-                </DetailSection>
-
-                {/* Account Information */}
-                <DetailSection title="Account Information" columns={3}>
-                  <DetailField
-                    label="Registration Date"
-                    value={selectedUser?.createdAt ? formatDate(selectedUser?.createdAt) : 'N/A'}
-                  />
-                  <DetailField
-                    label="Last Updated"
-                    value={selectedUser?.updatedAt ? formatDate(selectedUser?.updatedAt) : 'N/A'}
-                  />
-                  <DetailField
-                    label="Email Verified"
-                    value={
-                      selectedUser?.emailVerified ? (
-                        <Badge variant="outline" className="text-green-600 border-green-600">
-                          Verified
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline" className="text-orange-600 border-orange-600">
-                          Not Verified
-                        </Badge>
-                      )
-                    }
-                  />
-                </DetailSection>
-
-                {/* Additional Information */}
-                {(selectedUser?.website || selectedUser?.description || selectedUser?.socialMediaLinks) && (
-                  <DetailSection title="Additional Information" columns={1}>
-                    <DetailField
-                      label="Website"
-                      value={selectedUser?.website ? (
-                        <a
-                          href={selectedUser?.website}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-blue-600 hover:underline transition-colors"
-                        >
-                          {selectedUser?.website}
-                        </a>
-                      ) : undefined}
-                    />
-                    <DetailField
-                      label="Description"
-                      value={selectedUser?.description}
-                    />
-                    <DetailField
-                      label="Social Media"
-                      value={selectedUser?.socialMediaLinks && Object.keys(selectedUser?.socialMediaLinks).length > 0 ? (
-                        <div className="flex gap-3 flex-wrap">
-                          {Object.entries(selectedUser?.socialMediaLinks).map(([platform, url]) => (
-                            <a
-                              key={platform}
-                              href={url as string}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-blue-600 hover:underline text-sm transition-colors capitalize"
-                            >
-                              {platform}
-                            </a>
-                          ))}
-                        </div>
-                      ) : undefined}
-                    />
-                  </DetailSection>
-                )}
-            </div>
-          </DetailDialog>
-
-          {/* Approval Dialog */}
-          <Dialog open={showApprovalDialog} onOpenChange={setShowApprovalDialog}>
-            <DialogContent className="sm:max-w-[500px]">
-              <DialogHeader>
-                <DialogTitle className="flex items-center gap-2">
-                  <UserCheck className="h-5 w-5 text-green-600" />
-                  Approve User Account
-                </DialogTitle>
-                <DialogDescription>
-                  Approve {selectedUser?.firstName} {selectedUser?.lastName}'s account application.
-                  They will receive an email notification with your custom message.
-                </DialogDescription>
-              </DialogHeader>
-              
-              <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                  <Label htmlFor="approval-message">Custom Message (Optional)</Label>
-                  <Textarea
-                    id="approval-message"
-                    placeholder="Add a personalized welcome message for the user..."
-                    value={approvalMessage}
-                    onChange={(e) => setApprovalMessage(e.target.value)}
-                    rows={4}
-                  />
-                  <p className="text-sm text-muted-foreground">
-                    This message will be included in the approval email along with the default welcome content.
-                  </p>
-                </div>
-              </div>
-
-              <DialogFooter>
-                <Button
-                  variant="outline"
-                  onClick={() => setShowApprovalDialog(false)}
-                  disabled={isProcessing}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  onClick={handleApproveUser}
-                  disabled={isProcessing}
-                  className="bg-green-600 hover:bg-green-700"
-                >
-                  {isProcessing ? (
-                    <>
-                      <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                      Approving...
-                    </>
-                  ) : (
-                    <>
-                      <UserCheck className="h-4 w-4 mr-2" />
-                      Approve User
-                    </>
-                  )}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-
-          {/* Rejection Dialog */}
-          <Dialog open={showRejectionDialog} onOpenChange={setShowRejectionDialog}>
-            <DialogContent className="sm:max-w-[500px]">
-              <DialogHeader>
-                <DialogTitle className="flex items-center gap-2">
-                  <UserX className="h-5 w-5 text-red-600" />
-                  Reject User Account
-                </DialogTitle>
-                <DialogDescription>
-                  Reject {selectedUser?.firstName} {selectedUser?.lastName}'s account application.
-                  They will receive an email notification with the rejection reason.
-                </DialogDescription>
-              </DialogHeader>
-              
-              <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                  <Label htmlFor="rejection-reason">Rejection Reason *</Label>
-                  <Textarea
-                    id="rejection-reason"
-                    placeholder="Please provide a clear reason for rejection..."
-                    value={rejectionReason}
-                    onChange={(e) => setRejectionReason(e.target.value)}
-                    rows={3}
-                    required
-                  />
-                  <p className="text-sm text-muted-foreground">
-                    This reason will be included in the rejection email to help the user understand the decision.
-                  </p>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="rejection-message">Additional Message (Optional)</Label>
-                  <Textarea
-                    id="rejection-message"
-                    placeholder="Add any additional information or guidance for the user..."
-                    value={rejectionMessage}
-                    onChange={(e) => setRejectionMessage(e.target.value)}
-                    rows={3}
-                  />
-                  <p className="text-sm text-muted-foreground">
-                    Optional: Provide additional context or next steps for the user.
-                  </p>
-                </div>
-              </div>
-
-              <DialogFooter>
-                <Button
-                  variant="outline"
-                  onClick={() => setShowRejectionDialog(false)}
-                  disabled={isProcessing}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  variant="destructive"
-                  onClick={handleRejectUser}
-                  disabled={isProcessing || !rejectionReason.trim()}
-                >
-                  {isProcessing ? (
-                    <>
-                      <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                      Rejecting...
-                    </>
-                  ) : (
-                    <>
-                      <UserX className="h-4 w-4 mr-2" />
-                      Reject User
-                    </>
-                  )}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
         </div>
+
+        {/* Approval Dialog */}
+        <Dialog open={showApprovalDialog} onOpenChange={setShowApprovalDialog}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <UserCheck className="h-5 w-5 text-green-600" />
+                Approve User
+              </DialogTitle>
+              <DialogDescription>
+                Approve {selectedUser?.firstName} {selectedUser?.lastName}'s account application.
+                They will receive an email notification with your custom message.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Label htmlFor="approval-message">Custom Message (Optional)</Label>
+                <Textarea
+                  id="approval-message"
+                  placeholder="Add a personalized welcome message for the user..."
+                  value={approvalMessage}
+                  onChange={(e) => setApprovalMessage(e.target.value)}
+                  className="min-h-[100px]"
+                  rows={4}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setShowApprovalDialog(false)}
+                disabled={isProcessing}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleApproveUser}
+                disabled={isProcessing}
+                className="bg-green-600 hover:bg-green-700"
+              >
+                {isProcessing ? "Approving..." : "Approve User"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Rejection Dialog */}
+        <Dialog open={showRejectionDialog} onOpenChange={setShowRejectionDialog}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <UserX className="h-5 w-5 text-red-600" />
+                Reject User
+              </DialogTitle>
+              <DialogDescription>
+                Reject {selectedUser?.firstName} {selectedUser?.lastName}'s account application.
+                They will receive an email notification with the rejection reason.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Label htmlFor="rejection-reason">Rejection Reason *</Label>
+                <Textarea
+                  id="rejection-reason"
+                  placeholder="Please provide a clear reason for rejection..."
+                  value={rejectionReason}
+                  onChange={(e) => setRejectionReason(e.target.value)}
+                  className="min-h-[80px]"
+                  rows={3}
+                  required
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="rejection-message">Additional Message (Optional)</Label>
+                <Textarea
+                  id="rejection-message"
+                  placeholder="Any additional information or next steps..."
+                  value={rejectionMessage}
+                  onChange={(e) => setRejectionMessage(e.target.value)}
+                  className="min-h-[60px]"
+                  rows={2}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setShowRejectionDialog(false)}
+                disabled={isProcessing}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={handleRejectUser}
+                disabled={isProcessing || !rejectionReason.trim()}
+              >
+                {isProcessing ? "Rejecting..." : "Reject User"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Details Dialog */}
+        <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>User Details</DialogTitle>
+              <DialogDescription>
+                Complete information for {selectedUser?.firstName} {selectedUser?.lastName}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              {selectedUser && (
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Name</Label>
+                    <p className="text-sm">{selectedUser.firstName} {selectedUser.lastName}</p>
+                  </div>
+                  <div>
+                    <Label>Email</Label>
+                    <p className="text-sm">{selectedUser.email}</p>
+                  </div>
+                  <div>
+                    <Label>Phone</Label>
+                    <p className="text-sm">{selectedUser.phone || "N/A"}</p>
+                  </div>
+                  <div>
+                    <Label>Status</Label>
+                    <div className="mt-1">{getStatusBadge(selectedUser.status)}</div>
+                  </div>
+                  <div>
+                    <Label>Business Name</Label>
+                    <p className="text-sm">{selectedUser.businessName || "N/A"}</p>
+                  </div>
+                  <div>
+                    <Label>GST Number</Label>
+                    <p className="text-sm">{selectedUser.gstNumber || "N/A"}</p>
+                  </div>
+                  <div>
+                    <Label>Registered</Label>
+                    <p className="text-sm">{formatDate(selectedUser.createdAt)}</p>
+                  </div>
+                  <div>
+                    <Label>Last Updated</Label>
+                    <p className="text-sm">{formatDate(selectedUser.updatedAt)}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowDetailsDialog(false)}>
+                Close
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </DashboardLayout>
     </ProtectedRoute>
   );
