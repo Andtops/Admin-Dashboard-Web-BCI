@@ -916,6 +916,8 @@ export default defineSchema({
       appVersion: v.optional(v.string()),
     }),
     userId: v.optional(v.union(v.id("users"), v.id("admins"))), // Associated user
+    userEmail: v.optional(v.string()), // User email for targeting
+    userName: v.optional(v.string()), // User name for identification
     registeredAt: v.number(),
     lastUpdated: v.number(),
     unregisteredAt: v.optional(v.number()),
@@ -923,6 +925,7 @@ export default defineSchema({
   })
     .index("by_token", ["token"])
     .index("by_user_id", ["userId"])
+    .index("by_user_email", ["userEmail"])
     .index("by_platform", ["platform"])
     .index("by_is_active", ["isActive"])
     .index("by_registered_at", ["registeredAt"]),

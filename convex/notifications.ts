@@ -359,6 +359,8 @@ export const registerFCMToken = mutation({
       appVersion: v.optional(v.string()),
     }),
     userId: v.optional(v.union(v.id("users"), v.id("admins"))),
+    userEmail: v.optional(v.string()),
+    userName: v.optional(v.string()),
     registeredAt: v.number(),
   },
   handler: async (ctx, args) => {
@@ -374,6 +376,8 @@ export const registerFCMToken = mutation({
         platform: args.platform,
         deviceInfo: args.deviceInfo,
         userId: args.userId,
+        userEmail: args.userEmail,
+        userName: args.userName,
         lastUpdated: args.registeredAt,
         isActive: true,
       });
@@ -385,6 +389,8 @@ export const registerFCMToken = mutation({
         platform: args.platform,
         deviceInfo: args.deviceInfo,
         userId: args.userId,
+        userEmail: args.userEmail,
+        userName: args.userName,
         registeredAt: args.registeredAt,
         lastUpdated: args.registeredAt,
         isActive: true,

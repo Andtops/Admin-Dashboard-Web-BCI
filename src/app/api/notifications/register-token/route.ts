@@ -13,6 +13,8 @@ export const POST = withApiKeyAuth(async (request: NextRequest, apiKey) => {
       platform,
       deviceInfo,
       userId,
+      userEmail,
+      userName,
       appVersion,
       osVersion,
       preferences,
@@ -85,9 +87,15 @@ export const POST = withApiKeyAuth(async (request: NextRequest, apiKey) => {
       registeredAt: Date.now(),
     };
 
-    // Only include userId if it's provided
+    // Include user identification fields if provided
     if (userId) {
       mutationArgs.userId = userId;
+    }
+    if (userEmail) {
+      mutationArgs.userEmail = userEmail;
+    }
+    if (userName) {
+      mutationArgs.userName = userName;
     }
 
     const tokenId = await convex.mutation(api.notifications.registerFCMToken, mutationArgs);
