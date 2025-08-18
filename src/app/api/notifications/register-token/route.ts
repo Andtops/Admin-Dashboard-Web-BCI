@@ -139,7 +139,7 @@ export const POST = withApiKeyAuth(async (request: NextRequest, apiKey) => {
 export const PUT = withApiKeyAuth(async (request: NextRequest, apiKey) => {
   try {
     const body = await request.json();
-    const { token, userId, preferences, metadata } = body;
+    const { token, userId, userEmail, userName, preferences, metadata } = body;
 
     if (!token && !userId) {
       return NextResponse.json(
@@ -148,20 +148,60 @@ export const PUT = withApiKeyAuth(async (request: NextRequest, apiKey) => {
       );
     }
 
-    // Update token data
-    const updateData = {
-      lastSeen: new Date().toISOString(),
-      ...(preferences && { preferences }),
-      ...(metadata && { metadata: { ...metadata, lastActiveAt: new Date().toISOString() } })
+    console.log('🔄 Updating FCM token with user data:', { 
+      token: token ? token.substring(0, 20) + '...' : 'N/A', 
+      userId, 
+      userEmail, 
+      userName 
+    });
+
+    // Prepare update data for Convex
+    const updateArgs: any = {
+      lastUpdated: Date.now(),
+      isActive: true,
     };
 
-    console.log('Updating FCM token/user data:', { token, userId, updateData });
+    // Add user information if provided
+    if (userId) {
+      updateArgs.userId = userId;
+    }
+    if (userEmail) {
+      updateArgs.userEmail = userEmail;
+    }
+    if (userName) {
+      updateArgs.userName = userName;
+    }
+
+    // Update the FCM token in Convex database
+    if (token) {
+      // Find and update existing token
+      const result = await convex.mutation(api.notifications.updateFCMTokenWithUserData, {
+        token,
+        ...updateArgs
+      });
+
+      if (!result) {
+        return NextResponse.json(
+          { success: false, error: 'FCM token not found' },
+          { status: 404 }
+        );
+      }
+
+      console.log('✅ FCM token updated successfully in Convex:', {
+        tokenId: result,
+        userId,
+        userEmail
+      });
+    }
 
     return NextResponse.json({
       success: true,
-      message: 'Token/preferences updated successfully',
+      message: 'FCM token updated with user data successfully',
       data: {
-        updatedAt: new Date().toISOString()
+        updatedAt: new Date().toISOString(),
+        userId,
+        userEmail,
+        userName
       }
     });
   } catch (error) {

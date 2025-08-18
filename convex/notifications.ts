@@ -419,6 +419,41 @@ export const unregisterFCMToken = mutation({
   },
 });
 
+// Mutation to update FCM token with user data (for linking after authentication)
+export const updateFCMTokenWithUserData = mutation({
+  args: {
+    token: v.string(),
+    userId: v.optional(v.union(v.id("users"), v.id("admins"))),
+    userEmail: v.optional(v.string()),
+    userName: v.optional(v.string()),
+    lastUpdated: v.number(),
+    isActive: v.boolean(),
+  },
+  handler: async (ctx, args) => {
+    // Find the existing token
+    const tokenRecord = await ctx.db
+      .query("fcmTokens")
+      .filter((q) => q.eq(q.field("token"), args.token))
+      .first();
+
+    if (!tokenRecord) {
+      // Token doesn't exist, return null to indicate not found
+      return null;
+    }
+
+    // Update the token with user data
+    await ctx.db.patch(tokenRecord._id, {
+      userId: args.userId,
+      userEmail: args.userEmail,
+      userName: args.userName,
+      lastUpdated: args.lastUpdated,
+      isActive: args.isActive,
+    });
+
+    return tokenRecord._id;
+  },
+});
+
 // Query to get FCM tokens for specific users
 export const getFCMTokensForUsers = query({
   args: {
